@@ -1,0 +1,5 @@
+.terraform
+terraform.tfstate*
+ec2_stop.zip
+orders 
+orders.pub
