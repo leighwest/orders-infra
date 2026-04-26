@@ -26,3 +26,9 @@ jobs:
 
       - name: Terraform validate
         run: terraform validate
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform plan
+        run: terraform plan -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}" -var="INSTANCE_ID=${{ secrets.INSTANCE_ID }}"
