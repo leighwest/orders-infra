@@ -1,6 +1,6 @@
 resource "aws_cloudwatch_event_rule" "evening_rule" {
-  name = "evening_rule"
-  description = "Rule to trigger Lambda function at 11:50 PM AEDT / 10:50 PM AEST"
+  name                = "evening_rule"
+  description         = "Rule to trigger Lambda function at 11:50 PM AEDT / 10:50 PM AEST"
   schedule_expression = "cron(50 12 * * ? *)"
 }
 
