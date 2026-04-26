@@ -7,7 +7,7 @@ resource "aws_instance" "orders" {
 
   vpc_security_group_ids = [aws_security_group.default.id]
   user_data              = data.cloudinit_config.instance-bootstrap.rendered
-  key_name               = aws_key_pair.keypair.key_name
+  key_name               = "orders"
   iam_instance_profile   = aws_iam_instance_profile.ec2_instance_profile.name
 }
 
