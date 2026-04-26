@@ -1,5 +1,7 @@
 .terraform
+terraform.tfvars
 terraform.tfstate*
 ec2_stop.zip
 orders 
 orders.pub
+dispatch_lambda.zip

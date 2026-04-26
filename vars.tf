@@ -20,3 +20,9 @@ variable "INSTANCE_ID" {
   description = "The ID of the orders EC2 instance."
   type        = string
 }
+
+variable "ECR_REPO_NAME" {
+  description = "Name of the ECR repository for the orders Docker image."
+  type        = string
+  default     = "orders"
+}
