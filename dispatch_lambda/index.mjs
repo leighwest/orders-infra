@@ -9,7 +9,7 @@ export const handler = async (event) => {
 
     const dispatchedMessage = {
       ...body,
-      status: 'COMPLETED',
+      dispatchStatus: 'COMPLETED',
     };
 
     await client.send(
