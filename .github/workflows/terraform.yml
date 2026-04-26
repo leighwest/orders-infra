@@ -32,3 +32,6 @@ jobs:
 
       - name: Terraform plan
         run: terraform plan -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}" -var="INSTANCE_ID=${{ secrets.INSTANCE_ID }}"
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}" -var="INSTANCE_ID=${{ secrets.INSTANCE_ID }}"
