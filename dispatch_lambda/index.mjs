@@ -7,6 +7,8 @@ export const handler = async (event) => {
     const body = JSON.parse(record.body);
     console.log('Processing order:', body);
 
+    await delay(7000);
+
     const dispatchedMessage = {
       ...body,
       dispatchStatus: 'COMPLETED',
