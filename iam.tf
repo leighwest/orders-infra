@@ -196,6 +196,19 @@ resource "aws_iam_policy" "ec2_instance_policy" {
         ]
         Resource = aws_ecr_repository.orders.arn
       },
+      {
+        Sid    = "SSMAccess"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+        ]
+        Resource = [
+          "arn:aws:ssm:ap-southeast-4:519852452516:parameter/orders_mysql_password",
+          "arn:aws:ssm:ap-southeast-4:519852452516:parameter/orders_ses_smtp_username",
+          "arn:aws:ssm:ap-southeast-4:519852452516:parameter/orders_ses_smtp_password",
+        ]
+      },
     ]
   })
 }
