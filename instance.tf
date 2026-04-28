@@ -1,5 +1,5 @@
 resource "aws_instance" "orders" {
-  ami           = "ami-074a098b061c6ab42"
+  ami           = "ami-0fddd1724e3df67ed"
   instance_type = "t3.small"
   tags = {
     Name = "orders-server"
