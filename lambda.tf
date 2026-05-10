@@ -14,7 +14,7 @@ resource "aws_lambda_function" "ec2_stop" {
 
   environment {
     variables = {
-      REGION  = var.AWS_REGION
+      REGION = var.AWS_REGION
     }
   }
 
