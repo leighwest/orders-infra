@@ -12,14 +12,15 @@ GitHub Actions (push to main)
 Terraform apply
         ↓
 AWS Infrastructure:
-- EC2 (t3.small) + Elastic IP
+- EC2 (t3.small)
 - SQS: order-created, order-dispatched
-- S3: cupcake images
+- S3: cupcake images, deploy artefacts
 - ECR: orders Docker image repository
 - Lambda: dispatch service (Node.js)
 - SES: transactional email
-- IAM: instance role, Lambda roles (least privilege)
+- IAM: instance role, Lambda roles, GitHub Actions user (least privilege)
 - EventBridge: scheduled EC2 stop
+- SSM Session Manager: bastion-free EC2 access
 ```
 
 ---
@@ -32,7 +33,7 @@ AWS Infrastructure:
 | Cloud             | AWS                         |
 | CI/CD             | GitHub Actions              |
 | State backend     | S3 (`orders-infra-tfstate`) |
-| Runtime           | Amazon Linux 2 / EC2        |
+| Runtime           | Amazon Linux 2023 / EC2     |
 | Container runtime | Docker, Docker Compose      |
 
 ---
@@ -59,12 +60,11 @@ The pipeline is defined in `.github/workflows/terraform.yml`.
 
 ### Secrets required
 
-| Secret                  | Description                                                    |
-| ----------------------- | -------------------------------------------------------------- |
-| `AWS_ACCESS_KEY_ID`     | IAM credentials for Terraform                                  |
-| `AWS_SECRET_ACCESS_KEY` | IAM credentials                                                |
-| `PERSONAL_IP_ADDRESS`   | Your IP in CIDR notation — used to restrict SSH access locally |
-| `INSTANCE_ID`           | EC2 instance ID                                                |
+| Secret                  | Description                   |
+| ----------------------- | ----------------------------- |
+| `AWS_ACCESS_KEY_ID`     | IAM credentials for Terraform |
+| `AWS_SECRET_ACCESS_KEY` | IAM credentials               |
+| `PERSONAL_IP_ADDRESS`   | Your IP in CIDR notation      |
 
 ---
 
@@ -83,16 +83,17 @@ No DynamoDB lock — single developer workflow.
 
 ## Key Resources
 
-| Resource                         | Description                                 |
-| -------------------------------- | ------------------------------------------- |
-| `aws_instance.orders`            | EC2 instance running the orders app         |
-| `aws_eip.orders-eip`             | Elastic IP — persists across stop/start     |
-| `aws_sqs_queue.order_created`    | Orders publishes, Lambda consumes           |
-| `aws_sqs_queue.order_dispatched` | Lambda publishes, orders consumes           |
-| `aws_s3_bucket.orders`           | Stores cupcake images                       |
-| `aws_ecr_repository.orders`      | Docker image repository                     |
-| `aws_lambda_function.dispatch`   | Processes orders, publishes dispatch events |
-| `aws_lambda_function.ec2_stop`   | Scheduled stop of EC2 to save cost          |
+| Resource                         | Description                                   |
+| -------------------------------- | --------------------------------------------- |
+| `aws_instance.orders`            | EC2 instance running the orders app           |
+| `aws_eip.orders-eip`             | Elastic IP — persists across stop/start       |
+| `aws_sqs_queue.order_created`    | Orders publishes, Lambda consumes             |
+| `aws_sqs_queue.order_dispatched` | Lambda publishes, orders consumes             |
+| `aws_s3_bucket.orders`           | Stores cupcake images                         |
+| `aws_s3_bucket.deploy`           | Stages deploy artefacts for SSM-based deploys |
+| `aws_ecr_repository.orders`      | Docker image repository                       |
+| `aws_lambda_function.dispatch`   | Processes orders, publishes dispatch events   |
+| `aws_lambda_function.ec2_stop`   | Scheduled stop of EC2 to save cost            |
 
 ---
 
@@ -100,11 +101,12 @@ No DynamoDB lock — single developer workflow.
 
 Separate roles per service — least privilege throughout:
 
-| Role                          | Used by         | Permissions                                                              |
-| ----------------------------- | --------------- | ------------------------------------------------------------------------ |
-| `orders-ec2-instance-role`    | EC2 instance    | SQS read/write, S3, ECR pull, SSM Parameter Store read                   |
-| `orders-dispatch-lambda-role` | Dispatch Lambda | SQS consume order-created, SQS publish order-dispatched, CloudWatch logs |
-| `lambda_execution_role`       | EC2 stop Lambda | EC2 start/stop, CloudWatch logs                                          |
+| Principal                     | Type | Permissions                                                                 |
+| ----------------------------- | ---- | --------------------------------------------------------------------------- |
+| `orders-ec2-instance-role`    | Role | SQS read/write, S3, ECR pull, SSM Parameter Store read, SSM Session Manager |
+| `orders-github-actions`       | User | ECR push, EC2 start/describe, SSM send-command, S3 deploy bucket, Terraform |
+| `orders-dispatch-lambda-role` | Role | SQS consume order-created, SQS publish order-dispatched, CloudWatch logs    |
+| `lambda_execution_role`       | Role | EC2 start/stop, CloudWatch logs                                             |
 
 No IAM users or access keys for the application — credentials come from the EC2 instance role.
 
@@ -144,15 +146,18 @@ terraform apply -var-file="terraform.tfvars"
 
 ## Key Design Decisions
 
-| Decision                       | Rationale                                                                                                                                                    |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| S3 backend (no DynamoDB lock)  | Remote state without overhead — single developer                                                                                                             |
-| EC2 instance role              | No credentials in config or Parameter Store for app auth                                                                                                     |
-| Separate IAM roles per Lambda  | Different trust boundaries and permission sets                                                                                                               |
-| Direct Terraform resource refs | Avoids hardcoded ARNs, creates implicit dependency ordering                                                                                                  |
-| Elastic IP                     | Stable public endpoint across EC2 stop/start cycles                                                                                                          |
-| Scheduled EC2 stop             | Cost saving — hobby project, instance not needed 24/7                                                                                                        |
-| SSH open to `0.0.0.0/0`        | GitHub Actions IPs are too broad to whitelist — private key is the security boundary. SSM Session Manager is the enterprise alternative (future improvement) |
+| Decision                          | Rationale                                                                                                                        |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| S3 backend (no DynamoDB lock)     | Remote state without overhead — single developer                                                                                 |
+| EC2 instance role                 | No credentials in config or Parameter Store for app auth                                                                         |
+| Separate IAM roles per Lambda     | Different trust boundaries and permission sets                                                                                   |
+| Direct Terraform resource refs    | Avoids hardcoded ARNs, creates implicit dependency ordering                                                                      |
+| Elastic IP                        | Stable public endpoint across EC2 stop/start cycles                                                                              |
+| Scheduled EC2 stop                | Cost saving — hobby project, instance not needed 24/7                                                                            |
+| SSM Session Manager over SSH      | No open ports, IAM-controlled access, full audit trail in CloudWatch — enterprise standard for bastion-free EC2 access           |
+| S3 staging for deploy artefacts   | No SCP/SSH needed — runner uploads files, EC2 pulls them via instance role. Standard pattern alongside SSM send-command          |
+| Scoped GitHub Actions IAM user    | Replaces broad AdministratorAccess with a named, version-controlled policy. OIDC federation would be the next step in production |
+| `aws_caller_identity` data source | Replaces hardcoded account ID in ARNs — works across accounts without code changes                                               |
 
 ---
 
@@ -160,9 +165,12 @@ terraform apply -var-file="terraform.tfvars"
 
 - [orders](https://github.com/leighwest/orders) — Spring Boot application
 
+---
+
 ## Versions
 
-| Version                                                   | Description                                                                  |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [v1.0.0](https://github.com/leighwest/orders/tree/v1.0.0) | Spring Boot 17, MySQL, GitHub Actions CI/CD via SSH, HTTPS via Let's Encrypt |
-| [v2.0.0](https://github.com/leighwest/orders/tree/v2.0.0) | TBD                                                                          |
+| Version                                                         | Description                                                                               |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [v1.0.0](https://github.com/leighwest/orders-infra/tree/v1.0.0) | t3.small + EIP, SSH access, AL2023, SQS + Lambda dispatch                                 |
+| [v1.1.0](https://github.com/leighwest/orders-infra/tree/v1.1.0) | SSM Session Manager, scoped GitHub Actions IAM user, S3 deploy artefacts, port 22 removed |
+| [v2.0.0](https://github.com/leighwest/orders-infra/tree/v2.0.0) | TBD                                                                                       |
