@@ -159,3 +159,10 @@ terraform apply -var-file="terraform.tfvars"
 ## Related
 
 - [orders](https://github.com/leighwest/orders) — Spring Boot application
+
+## Versions
+
+| Version                                                   | Description                                                                  |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [v1.0.0](https://github.com/leighwest/orders/tree/v1.0.0) | Spring Boot 17, MySQL, GitHub Actions CI/CD via SSH, HTTPS via Let's Encrypt |
+| [v2.0.0](https://github.com/leighwest/orders/tree/v2.0.0) | TBD                                                                          |

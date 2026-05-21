@@ -24,6 +24,120 @@ resource "aws_ssm_parameter" "smtp_password" {
 }
 
 ###
+# GitHub Actions
+###
+
+resource "aws_iam_user" "github_actions" {
+  name = "orders-github-actions"
+}
+
+resource "aws_iam_access_key" "github_actions" {
+  user = aws_iam_user.github_actions.name
+}
+
+resource "aws_iam_policy" "github_actions_policy" {
+  name = "orders-github-actions-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ECRAuth"
+        Effect = "Allow"
+        Action = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
+        Sid    = "ECRAccess"
+        Effect = "Allow"
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+        ]
+        Resource = aws_ecr_repository.orders.arn
+      },
+      {
+        Sid    = "EC2Access"
+        Effect = "Allow"
+        Action = [
+          "ec2:StartInstances",
+          "ec2:DescribeInstances",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SSMSendCommand"
+        Effect = "Allow"
+        Action = [
+          "ssm:SendCommand",
+          "ssm:GetCommandInvocation",
+          "ssm:DescribeInstanceInformation",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "S3DeployAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket",
+        ]
+        Resource = [
+          aws_s3_bucket.deploy.arn,
+          "${aws_s3_bucket.deploy.arn}/*",
+        ]
+      },
+      {
+        Sid    = "STSAccess"
+        Effect = "Allow"
+        Action = ["sts:GetCallerIdentity"]
+        Resource = "*"
+      },
+      {
+        Sid    = "TerraformAccess"
+        Effect = "Allow"
+        Action = [
+          "ec2:*",
+          "iam:*",
+          "lambda:*",
+          "sqs:*",
+          "s3:*",
+          "ecr:*",
+          "ssm:*",
+          "events:*",
+          "logs:*",
+          "scheduler:*",
+        ]
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+resource "aws_iam_user_policy_attachment" "github_actions_policy_attach" {
+  user       = aws_iam_user.github_actions.name
+  policy_arn = aws_iam_policy.github_actions_policy.arn
+}
+
+resource "aws_ssm_parameter" "github_actions_access_key_id" {
+  name  = "orders_github_actions_access_key_id"
+  type  = "String"
+  value = aws_iam_access_key.github_actions.id
+}
+
+resource "aws_ssm_parameter" "github_actions_secret_access_key" {
+  name  = "orders_github_actions_secret_access_key"
+  type  = "SecureString"
+  value = aws_iam_access_key.github_actions.secret
+}
+
+###
 # EC2 Instance Manager
 ###
 
@@ -205,9 +319,9 @@ resource "aws_iam_policy" "ec2_instance_policy" {
           "ssm:GetParameters",
         ]
         Resource = [
-          "arn:aws:ssm:ap-southeast-4:519852452516:parameter/orders_mysql_password",
-          "arn:aws:ssm:ap-southeast-4:519852452516:parameter/orders_ses_smtp_username",
-          "arn:aws:ssm:ap-southeast-4:519852452516:parameter/orders_ses_smtp_password",
+          "arn:aws:ssm:${var.AWS_REGION}:${data.aws_caller_identity.current.account_id}:parameter/orders_mysql_password",
+          "arn:aws:ssm:${var.AWS_REGION}:${data.aws_caller_identity.current.account_id}:parameter/orders_ses_smtp_username",
+          "arn:aws:ssm:${var.AWS_REGION}:${data.aws_caller_identity.current.account_id}:parameter/orders_ses_smtp_password",
         ]
       },
     ]
@@ -217,6 +331,11 @@ resource "aws_iam_policy" "ec2_instance_policy" {
 resource "aws_iam_role_policy_attachment" "ec2_instance_policy_attach" {
   role       = aws_iam_role.ec2_instance_role.name
   policy_arn = aws_iam_policy.ec2_instance_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_ssm" {
+  role       = aws_iam_role.ec2_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_instance_profile" "ec2_instance_profile" {
