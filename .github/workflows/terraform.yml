@@ -21,6 +21,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-4
 
+      - name: Package Lambda functions
+        run: |
+          zip -j ec2_stop.zip scripts/ec2_stop.py
+          zip -j dispatch_lambda.zip dispatch_lambda/index.mjs
+          aws s3 cp ec2_stop.zip s3://orders-lambda-artifacts/ec2_stop/${{ github.sha }}.zip
+          aws s3 cp dispatch_lambda.zip s3://orders-lambda-artifacts/dispatch/${{ github.sha }}.zip
+
       - name: Terraform init
         run: terraform init
 
@@ -31,7 +38,7 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Terraform plan
-        run: terraform plan -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}"
+        run: terraform plan -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}" -var="GIT_SHA=${{ github.sha }}"
 
       - name: Terraform apply
-        run: terraform apply -auto-approve -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}"
+        run: terraform apply -auto-approve -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}" -var="GIT_SHA=${{ github.sha }}"

@@ -12,3 +12,8 @@ variable "ECR_REPO_NAME" {
   type        = string
   default     = "orders"
 }
+
+variable "GIT_SHA" {
+  description = "Git commit SHA for Lambda artifact versioning"
+  type        = string
+}
