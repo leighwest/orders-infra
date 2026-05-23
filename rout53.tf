@@ -36,12 +36,8 @@ resource "aws_route53_record" "apex" {
   zone_id = aws_route53_zone.leighwest_dev.zone_id
   name    = "leighwest.dev"
   type    = "A"
-
-  alias {
-    name                   = "distracted-knuth-2af9c0.netlify.app"
-    zone_id                = "Z2FDTNDATAQYW2" # Netlify's hosted zone ID (fixed value for all Netlify sites)
-    evaluate_target_health = false
-  }
+  ttl     = 300
+  records = ["75.2.60.5", "99.83.190.102"]
 }
 
 resource "aws_route53_record" "www" {

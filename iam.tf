@@ -113,6 +113,7 @@ resource "aws_iam_policy" "github_actions_policy" {
           "events:*",
           "logs:*",
           "scheduler:*",
+          "route53:*",
         ]
         Resource = "*"
       },
