@@ -2,6 +2,18 @@
 
 ---
 
+## 2026-05-25
+
+EC2 start Lambda added — starts the instance, waits for status OK, polls `/actuator/health`, then updates the `cupcakes-api` Route 53 A record with the new public IP (note that this is redundant because the EC2 still as an Elastic IP).
+
+Scheduled start (6:50am AEST) and stop (8:00pm AEST) configured via EventBridge Scheduler, replacing the old EventBridge Rule. Native timezone support handles daylight savings time automatically.
+
+Stop Lambda IAM tightened — scoped to `StopInstances` only. Separate least-privilege roles per Lambda and for the scheduler.
+
+Dead code removed: `ec2_manager` IAM user and `eventbridge.tf`.
+
+---
+
 ## 2026-05-23
 
 Route 53 is now the authoritative DNS for `leighwest.dev`. All records migrated from Namecheap; nameservers updated. `cupcakes-api` TTL permanently set to 60s.
