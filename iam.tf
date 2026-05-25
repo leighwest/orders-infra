@@ -1,3 +1,7 @@
+###
+# SMTP
+###
+
 resource "aws_iam_user" "smtp_user" {
   name = "ses-smtp-user"
 }
@@ -139,64 +143,11 @@ resource "aws_ssm_parameter" "github_actions_secret_access_key" {
 }
 
 ###
-# EC2 Instance Manager
-###
-
-resource "aws_iam_user" "ec2_manager" {
-  name = "ec2-manager"
-}
-
-resource "aws_iam_policy" "ec2_mgmt_policy" {
-  name        = "EC2ManagementPolicy"
-  path        = "/"
-  description = "Allow starting and stopping EC2 instances"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ec2:StartInstances",
-          "ec2:StopInstances",
-          "ec2:DescribeInstances",
-          "ec2:CreateTags",
-        ]
-        Resource = [
-          "*",
-        ]
-      },
-    ]
-  })
-}
-
-resource "aws_iam_user_policy_attachment" "ec2_manager_policy_attach" {
-  user       = aws_iam_user.ec2_manager.name
-  policy_arn = aws_iam_policy.ec2_mgmt_policy.arn
-}
-
-resource "aws_iam_access_key" "ec2_manager_credentials" {
-  user = aws_iam_user.ec2_manager.name
-}
-
-resource "aws_ssm_parameter" "ec2_manager_access_key_id" {
-  name  = "ec2_manager_access_key_id"
-  type  = "String"
-  value = aws_iam_access_key.ec2_manager_credentials.id
-}
-
-resource "aws_ssm_parameter" "ec2_manager_secret_access_key" {
-  name  = "ec2_manager_secret_access_key"
-  type  = "SecureString"
-  value = aws_iam_access_key.ec2_manager_credentials.secret
-}
-
-###
 # Lambda Scheduled Stop
 ###
 
-resource "aws_iam_role" "lambda_role" {
-  name = "lambda_execution_role"
+resource "aws_iam_role" "ec2_stop_lambda" {
+  name = "ec2-stop-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -212,37 +163,142 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
-resource "aws_iam_policy" "lambda_policy" {
-  name = "ec2_stop_start_policy"
+resource "aws_iam_policy" "ec2_stop_lambda" {
+  name = "ec2-stop-lambda-policy"
+
   policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
+    Version = "2012-10-17"
+    Statement = [
       {
-        "Effect" : "Allow",
-        "Action" : [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ],
-        "Resource" : "arn:aws:logs:*:*:*"
+        Sid    = "EC2Stop"
+        Effect = "Allow"
+        Action = [
+          "ec2:StopInstances",
+          "ec2:DescribeInstances",
+        ]
+        Resource = "*"
       },
       {
-        "Effect" : "Allow",
-        "Action" : [
-          "ec2:StartInstances",
-          "ec2:StopInstances",
-          "ec2:DescribeInstances"
-        ],
-        "Resource" : "*"
-      }
+        Sid    = "CloudWatchLogs"
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
     ]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
-  policy_arn = aws_iam_policy.lambda_policy.arn
-  role       = aws_iam_role.lambda_role.name
+resource "aws_iam_role_policy_attachment" "ec2_stop_lambda" {
+  role       = aws_iam_role.ec2_stop_lambda.name
+  policy_arn = aws_iam_policy.ec2_stop_lambda.arn
 }
+
+###
+# EC2 Start Lambda Role
+###
+
+resource "aws_iam_role" "ec2_start_lambda" {
+  name = "ec2-start-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_policy" "ec2_start_lambda" {
+  name = "ec2-start-lambda-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2Start"
+        Effect = "Allow"
+        Action = [
+          "ec2:StartInstances",
+          "ec2:DescribeInstances",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "Route53Update"
+        Effect = "Allow"
+        Action = [
+          "route53:ChangeResourceRecordSets",
+          "route53:ListHostedZonesByName",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "CloudWatchLogs"
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_start_lambda" {
+  role       = aws_iam_role.ec2_start_lambda.name
+  policy_arn = aws_iam_policy.ec2_start_lambda.arn
+}
+
+###
+# EventBridge Scheduler Role
+###
+
+resource "aws_iam_role" "eventbridge_scheduler" {
+  name = "eventbridge-scheduler-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "scheduler.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_policy" "eventbridge_scheduler" {
+  name = "eventbridge-scheduler-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "InvokeLambdas"
+      Effect = "Allow"
+      Action = "lambda:InvokeFunction"
+      Resource = [
+        aws_lambda_function.ec2_start.arn,
+        aws_lambda_function.ec2_stop.arn,
+      ]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eventbridge_scheduler" {
+  role       = aws_iam_role.eventbridge_scheduler.name
+  policy_arn = aws_iam_policy.eventbridge_scheduler.arn
+}
+
+###
+# EC2 Instance Role
+###
 
 resource "aws_iam_role" "ec2_instance_role" {
   name = "orders-ec2-instance-role"
