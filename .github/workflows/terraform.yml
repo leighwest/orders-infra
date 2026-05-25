@@ -27,6 +27,7 @@ jobs:
           zip -j ec2_start.zip scripts/ec2_start.py
           zip -j dispatch_lambda.zip dispatch_lambda/index.mjs
           aws s3 cp ec2_stop.zip s3://orders-lambda-artifacts/ec2_stop/${{ github.sha }}.zip
+          aws s3 cp ec2_start.zip s3://orders-lambda-artifacts/ec2_start/${{ github.sha }}.zip
           aws s3 cp dispatch_lambda.zip s3://orders-lambda-artifacts/dispatch/${{ github.sha }}.zip
 
       - name: Terraform init
