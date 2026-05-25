@@ -5,7 +5,7 @@
 resource "aws_lambda_function" "ec2_stop" {
   s3_bucket     = aws_s3_bucket.lambda_artifacts.bucket
   s3_key        = "ec2_stop/${var.GIT_SHA}.zip"
-  function_name = "ec2_stop_auto"
+  function_name = "ec2_stop"
   role          = aws_iam_role.ec2_stop_lambda.arn
   handler       = "ec2_stop.lambda_handler"
   runtime       = "python3.9"
