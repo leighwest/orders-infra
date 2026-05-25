@@ -91,7 +91,6 @@ No DynamoDB lock — single developer workflow.
 | Resource                         | Description                                   |
 | -------------------------------- | --------------------------------------------- |
 | `aws_instance.orders`            | EC2 instance running the orders app           |
-| `aws_eip.orders-eip`             | Elastic IP — persists across stop/start       |
 | `aws_route53_zone.leighwest_dev` | Hosted zone for leighwest.dev                 |
 | `aws_sqs_queue.order_created`    | Orders publishes, Lambda consumes             |
 | `aws_sqs_queue.order_dispatched` | Lambda publishes, orders consumes             |

@@ -4,7 +4,9 @@
 
 ## 2026-05-25
 
-EC2 start Lambda added — starts the instance, waits for status OK, polls `/actuator/health`, then updates the `cupcakes-api` Route 53 A record with the new public IP (note that this is redundant because the EC2 still as an Elastic IP).
+EC2 start Lambda added — starts the instance, waits for status OK, polls `/actuator/health`, then updates the `cupcakes-api` Route 53 A record with the new public IP.
+
+Elastic IP removed. Instance now uses a dynamic public IP assigned on start. Start Lambda updates Route 53 automatically on each boot.
 
 Scheduled start (6:50am AEST) and stop (8:00pm AEST) configured via EventBridge Scheduler, replacing the old EventBridge Rule. Native timezone support handles daylight savings time automatically.
 
