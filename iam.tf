@@ -226,6 +226,7 @@ resource "aws_iam_policy" "ec2_start_lambda" {
         Action = [
           "ec2:StartInstances",
           "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus"
         ]
         Resource = "*"
       },
