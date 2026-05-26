@@ -14,6 +14,16 @@ resource "aws_route53_record" "instance_starter" {
   records = ["139.84.203.187"]
 }
 
+# --- cupcakes-api ---
+
+resource "aws_route53_record" "www_cupcakes_api" {
+  zone_id = aws_route53_zone.leighwest_dev.zone_id
+  name    = "www.cupcakes-api.leighwest.dev"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["cupcakes-api.leighwest.dev"]
+}
+
 # --- Apex alias (portfolio site → Netlify) ---
 
 resource "aws_route53_record" "apex" {
