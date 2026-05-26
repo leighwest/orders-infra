@@ -6,14 +6,6 @@ resource "aws_route53_zone" "leighwest_dev" {
 
 # --- A Records ---
 
-resource "aws_route53_record" "cupcakes_api" {
-  zone_id = aws_route53_zone.leighwest_dev.zone_id
-  name    = "cupcakes-api.leighwest.dev"
-  type    = "A"
-  ttl     = 60
-  records = ["16.26.30.45"]
-}
-
 resource "aws_route53_record" "instance_starter" {
   zone_id = aws_route53_zone.leighwest_dev.zone_id
   name    = "instance-starter.leighwest.dev"
