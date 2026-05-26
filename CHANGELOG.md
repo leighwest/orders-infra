@@ -2,6 +2,10 @@
 
 ---
 
+## 2026-05-26
+
+`cupcakes-api` A record removed from Terraform — owned by the start Lambda at runtime. `www.cupcakes-api` converted from A record to CNAME pointing at `cupcakes-api.leighwest.dev`.
+
 ## 2026-05-25
 
 EC2 start Lambda added — starts the instance, waits for status OK, polls `/actuator/health`, then updates the `cupcakes-api` Route 53 A record with the new public IP.
