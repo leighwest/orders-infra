@@ -31,7 +31,7 @@ resource "aws_route53_record" "apex" {
   name    = "leighwest.dev"
   type    = "A"
   ttl     = 300
-  records = ["75.2.60.5", "99.83.190.102"]
+  records = ["75.2.60.5"]
 }
 
 resource "aws_route53_record" "www" {
