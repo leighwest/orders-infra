@@ -2,6 +2,8 @@ import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
 const client = new SQSClient({ region: process.env.AWS_REGION });
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const handler = async (event) => {
   for (const record of event.Records) {
     const body = JSON.parse(record.body);
