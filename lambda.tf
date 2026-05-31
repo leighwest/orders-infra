@@ -13,7 +13,9 @@ resource "aws_lambda_function" "ec2_stop" {
 
   environment {
     variables = {
-      REGION = var.AWS_REGION
+      REGION            = var.AWS_REGION
+      HOSTED_ZONE_ID    = aws_route53_zone.leighwest_dev.zone_id
+      CLOUDFRONT_DOMAIN = aws_cloudfront_distribution.closed_page.domain_name
     }
   }
 }
