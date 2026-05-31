@@ -17,3 +17,13 @@ resource "aws_s3_bucket_versioning" "lambda_artifacts" {
     status = "Enabled"
   }
 }
+
+resource "aws_s3_bucket" "closed_page" {
+  bucket = "orders-closed-page"
+}
+
+resource "aws_s3_bucket_policy" "closed_page" {
+  bucket = aws_s3_bucket.closed_page.id
+  policy = data.aws_iam_policy_document.closed_page_s3.json
+}
+
