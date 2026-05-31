@@ -118,6 +118,8 @@ resource "aws_iam_policy" "github_actions_policy" {
           "logs:*",
           "scheduler:*",
           "route53:*",
+          "acm:*",
+          "cloudfront:*",
         ]
         Resource = "*"
       },
