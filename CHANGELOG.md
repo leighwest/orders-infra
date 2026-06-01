@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-06-01
+
+ACM certificate provisioned for `cupcakes-api.leighwest.dev` in `us-east-1` — replaces Let's Encrypt cert on the EC2. Auto-renews, no renewal hooks, no EC2 dependency.
+
+CloudFront distribution added with two origins: EC2 (via `origin.cupcakes-api.leighwest.dev`) and S3 (closed page fallback). Origin group configured with automatic failover on 5xx — stop Lambda just stops the instance, CloudFront detects the failure and serves the closed page from S3 automatically. Path-based cache behaviours route API traffic directly to EC2; default behaviour uses the origin group for S3 fallback. Custom error responses serve `closed.html` on 403, 404, 502, and 504.
+
+`orders-closed-page` S3 bucket added. Bucket policy restricts access to the CloudFront distribution via OAC.
+
+`cupcakes-api.leighwest.dev` brought back into Terraform as a permanent CloudFront alias — no longer flipped by the start Lambda. `origin.cupcakes-api.leighwest.dev` created once via CLI with placeholder `1.1.1.1`; owned by start Lambda at runtime, not in Terraform state.
+
+Start Lambda simplified — always updates `origin` DNS with the current EC2 IP regardless of instance state; health check via raw IP over HTTP to avoid SSL mismatch. State filter updated to exclude terminated instances.
+
+Stop Lambda simplified — stops the instance only; no DNS flip. CloudFront failover handles the rest.
+
+Instance type swapped from `t3.small` to `t4g.small` (Graviton/ARM). AMI updated to AL2023 ARM64 for `ap-southeast-4`. `lifecycle { ignore_changes = [associate_public_ip_address] }` added to prevent instance replacement when stopped.
+
+Deploy artefacts S3 bucket added to EC2 instance IAM policy — required for SSM deploy script to pull files.
+
+`static/closed.html` and `static/closed.webp` checked into repo as source of truth — upload manually via `aws s3 cp`.
+
+---
+
 ## 2026-05-26
 
 `cupcakes-api` A record removed from Terraform — owned by the start Lambda at runtime. `www.cupcakes-api` converted from A record to CNAME pointing at `cupcakes-api.leighwest.dev`.
