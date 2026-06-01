@@ -28,14 +28,6 @@ resource "aws_route53_record" "cupcakes_api" {
   }
 }
 
-resource "aws_route53_record" "cupcakes_api_origin" {
-  zone_id = aws_route53_zone.leighwest_dev.zone_id
-  name    = "origin.cupcakes-api.leighwest.dev"
-  type    = "A"
-  ttl     = 60
-  records = ["1.1.1.1"] # placeholder
-}
-
 resource "aws_route53_record" "www_cupcakes_api" {
   zone_id = aws_route53_zone.leighwest_dev.zone_id
   name    = "www.cupcakes-api.leighwest.dev"
