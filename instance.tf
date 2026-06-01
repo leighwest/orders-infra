@@ -1,6 +1,6 @@
 resource "aws_instance" "orders" {
-  ami                         = "ami-0fddd1724e3df67ed"
-  instance_type               = "t3.small"
+  ami                         = "ami-06ef0823cb7e4f283"
+  instance_type               = "t4g.small"
   associate_public_ip_address = true
 
   tags = {
