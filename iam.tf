@@ -352,6 +352,8 @@ resource "aws_iam_policy" "ec2_instance_policy" {
         Resource = [
           aws_s3_bucket.orders.arn,
           "${aws_s3_bucket.orders.arn}/*",
+          aws_s3_bucket.deploy.arn,
+          "${aws_s3_bucket.deploy.arn}/*",
         ]
       },
       {
