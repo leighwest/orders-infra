@@ -1,5 +1,5 @@
 resource "aws_instance" "orders" {
-  ami                         = "ami-06ef0823cb7e4f283"
+  ami                         = "ami-0a40c45ee943b3cfa"
   instance_type               = "t4g.small"
   associate_public_ip_address = true
 
