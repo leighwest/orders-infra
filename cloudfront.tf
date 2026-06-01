@@ -22,10 +22,12 @@ resource "aws_cloudfront_distribution" "closed_page" {
     origin_id   = "ec2-orders"
 
     custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
+      http_port                = 80
+      https_port               = 443
+      origin_protocol_policy   = "http-only"
+      origin_ssl_protocols     = ["TLSv1.2"]
+      origin_keepalive_timeout = 5
+      origin_read_timeout      = 10
     }
   }
 
@@ -169,6 +171,18 @@ resource "aws_cloudfront_distribution" "closed_page" {
     min_ttl     = 0
     default_ttl = 0
     max_ttl     = 0
+  }
+
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/closed.html"
+  }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/closed.html"
   }
 
   restrictions {
