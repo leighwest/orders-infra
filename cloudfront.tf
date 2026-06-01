@@ -47,14 +47,78 @@ resource "aws_cloudfront_distribution" "closed_page" {
     }
   }
 
+  # Default behaviour — read-only, uses origin group failover
   default_cache_behavior {
     target_origin_id       = "orders-origin-group"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type"]
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # Orders API — all methods, EC2 origin directly
+  ordered_cache_behavior {
+    path_pattern           = "/orders*"
+    target_origin_id       = "ec2-orders"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
 
     forwarded_values {
       query_string = true
+      headers      = ["Authorization", "Content-Type"]
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # Cupcakes API — all methods, EC2 origin directly
+  ordered_cache_behavior {
+    path_pattern           = "/cupcakes*"
+    target_origin_id       = "ec2-orders"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type"]
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # Actuator — health check endpoint
+  ordered_cache_behavior {
+    path_pattern           = "/actuator*"
+    target_origin_id       = "ec2-orders"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = false
       headers      = ["Authorization", "Content-Type"]
       cookies {
         forward = "none"
