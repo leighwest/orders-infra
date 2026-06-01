@@ -13,12 +13,13 @@ def lambda_handler(event, context):
     response = ec2.describe_instances(
         Filters=[
             {'Name': 'tag:Name', 'Values': ['orders-server']},
+            {'Name': 'instance-state-name', 'Values': ['stopped', 'running', 'pending']}
         ]
     )
 
     instances = response['Reservations']
     if not instances:
-        raise Exception('No stopped instance found with tag Name=orders-server')
+        raise Exception('No active instance found with tag Name=orders-server')
 
     instance = instances[0]['Instances'][0]
     instance_id = instance['InstanceId']
