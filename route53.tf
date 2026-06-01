@@ -16,6 +16,26 @@ resource "aws_route53_record" "instance_starter" {
 
 # --- cupcakes-api ---
 
+resource "aws_route53_record" "cupcakes_api" {
+  zone_id = aws_route53_zone.leighwest_dev.zone_id
+  name    = "cupcakes-api.leighwest.dev"
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.closed_page.domain_name
+    zone_id                = aws_cloudfront_distribution.closed_page.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "cupcakes_api_origin" {
+  zone_id = aws_route53_zone.leighwest_dev.zone_id
+  name    = "origin.cupcakes-api.leighwest.dev"
+  type    = "A"
+  ttl     = 60
+  records = ["1.1.1.1"] # placeholder
+}
+
 resource "aws_route53_record" "www_cupcakes_api" {
   zone_id = aws_route53_zone.leighwest_dev.zone_id
   name    = "www.cupcakes-api.leighwest.dev"

@@ -10,24 +10,60 @@ resource "aws_cloudfront_distribution" "closed_page" {
   default_root_object = "closed.html"
   aliases             = ["cupcakes-api.leighwest.dev"]
 
+  # S3 origin — closed page fallback
   origin {
     domain_name              = aws_s3_bucket.closed_page.bucket_regional_domain_name
     origin_id                = "s3-closed-page"
     origin_access_control_id = aws_cloudfront_origin_access_control.closed_page.id
   }
 
+  # EC2 origin — live app
+  origin {
+    domain_name = "origin.cupcakes-api.leighwest.dev"
+    origin_id   = "ec2-orders"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  # Origin group — EC2 primary, S3 fallback
+  origin_group {
+    origin_id = "orders-origin-group"
+
+    failover_criteria {
+      status_codes = [500, 502, 503, 504]
+    }
+
+    member {
+      origin_id = "ec2-orders"
+    }
+
+    member {
+      origin_id = "s3-closed-page"
+    }
+  }
+
   default_cache_behavior {
-    target_origin_id       = "s3-closed-page"
+    target_origin_id       = "orders-origin-group"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
 
     forwarded_values {
-      query_string = false
+      query_string = true
+      headers      = ["Authorization", "Content-Type"]
       cookies {
         forward = "none"
       }
     }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
   }
 
   restrictions {

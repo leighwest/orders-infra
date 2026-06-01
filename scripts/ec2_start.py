@@ -4,6 +4,8 @@ import time
 import os
 
 region = os.environ['REGION']
+HOSTED_ZONE_ID = os.environ['HOSTED_ZONE_ID']
+
 ec2 = boto3.client('ec2', region_name=region)
 route53 = boto3.client('route53')
 
@@ -31,7 +33,25 @@ def lambda_handler(event, context):
     public_ip = response['Reservations'][0]['Instances'][0]['PublicIpAddress']
     print('Public IP: ' + public_ip)
 
-    health_url = 'http://' + public_ip + '/actuator/health'
+    # Update origin subdomain to new EC2 IP
+    route53.change_resource_record_sets(
+        HostedZoneId=HOSTED_ZONE_ID,
+        ChangeBatch={
+            'Changes': [{
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                    'Name': 'origin.cupcakes-api.leighwest.dev',
+                    'Type': 'A',
+                    'TTL': 60,
+                    'ResourceRecords': [{'Value': public_ip}]
+                }
+            }]
+        }
+    )
+    print('origin DNS updated to ' + public_ip)
+    
+    # Health check via raw IP — bypasses DNS propagation delay
+    health_url = 'http://' + public_ip + ':80/actuator/health'
     for attempt in range(24):  # 2 min max (24 * 5s)
         try:
             with urllib.request.urlopen(health_url, timeout=5) as r:
@@ -42,23 +62,4 @@ def lambda_handler(event, context):
             print(f'Health check attempt {attempt + 1} failed: {e}')
         time.sleep(5)
     else:
-        print('App did not become healthy in time — updating DNS anyway')
-
-    response = route53.list_hosted_zones_by_name(DNSName='leighwest.dev.')
-    hosted_zone_id = response['HostedZones'][0]['Id'].split('/')[-1]
-
-    route53.change_resource_record_sets(
-        HostedZoneId=hosted_zone_id,
-        ChangeBatch={
-            'Changes': [{
-                'Action': 'UPSERT',
-                'ResourceRecordSet': {
-                    'Name': 'cupcakes-api.leighwest.dev',
-                    'Type': 'A',
-                    'TTL': 60,
-                    'ResourceRecords': [{'Value': public_ip}]
-                }
-            }]
-        }
-    )
-    print('DNS updated to ' + public_ip)
+        print('App did not become healthy in time')

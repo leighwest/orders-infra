@@ -181,15 +181,6 @@ resource "aws_iam_policy" "ec2_stop_lambda" {
         Resource = "*"
       },
       {
-        Sid    = "Route53Update"
-        Effect = "Allow"
-        Action = [
-          "route53:ChangeResourceRecordSets",
-          "route53:ListHostedZonesByName",
-        ]
-        Resource = "*"
-      },
-      {
         Sid    = "CloudWatchLogs"
         Effect = "Allow"
         Action = [
@@ -246,7 +237,6 @@ resource "aws_iam_policy" "ec2_start_lambda" {
         Effect = "Allow"
         Action = [
           "route53:ChangeResourceRecordSets",
-          "route53:ListHostedZonesByName",
         ]
         Resource = "*"
       },
