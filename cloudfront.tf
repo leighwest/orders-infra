@@ -6,9 +6,8 @@ resource "aws_cloudfront_origin_access_control" "closed_page" {
 }
 
 resource "aws_cloudfront_distribution" "closed_page" {
-  enabled             = true
-  default_root_object = "closed.html"
-  aliases             = ["cupcakes-api.leighwest.dev"]
+  enabled = true
+  aliases = ["cupcakes-api.leighwest.dev"]
 
   # S3 origin — closed page fallback
   origin {
@@ -50,6 +49,48 @@ resource "aws_cloudfront_distribution" "closed_page" {
   # Default behaviour — read-only, uses origin group failover
   default_cache_behavior {
     target_origin_id       = "orders-origin-group"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type"]
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # Swagger UI — EC2 origin directly
+  ordered_cache_behavior {
+    path_pattern           = "/swagger-ui*"
+    target_origin_id       = "ec2-orders"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type"]
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  # OpenAPI spec — EC2 origin directly
+  ordered_cache_behavior {
+    path_pattern           = "/v3*"
+    target_origin_id       = "ec2-orders"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
