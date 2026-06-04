@@ -112,7 +112,7 @@ resource "aws_cloudfront_distribution" "closed_page" {
 
   # Orders API — all methods, EC2 origin directly
   ordered_cache_behavior {
-    path_pattern           = "/orders*"
+    path_pattern           = "/order*"
     target_origin_id       = "ec2-orders"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
