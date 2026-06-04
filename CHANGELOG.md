@@ -2,6 +2,12 @@
 
 ---
 
+## 2026-06-04
+
+SSM Parameter Store parameter renamed from `orders_mysql_password` to `orders_postgres_password`. EC2 instance IAM policy updated to reference new parameter ARN.
+
+---
+
 ## 2026-06-01
 
 ACM certificate provisioned for `cupcakes-api.leighwest.dev` in `us-east-1` — replaces Let's Encrypt cert on the EC2. Auto-renews, no renewal hooks, no EC2 dependency.

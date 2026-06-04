@@ -128,11 +128,11 @@ No IAM users or access keys for the application — credentials come from the EC
 
 Application secrets are stored in AWS Systems Manager Parameter Store:
 
-| Parameter                  | Type         | Description         |
-| -------------------------- | ------------ | ------------------- |
-| `orders_mysql_password`    | SecureString | MySQL root password |
-| `orders_ses_smtp_username` | String       | SES SMTP username   |
-| `orders_ses_smtp_password` | SecureString | SES SMTP password   |
+| Parameter                  | Type         | Description       |
+| -------------------------- | ------------ | ----------------- |
+| `orders_postgres_password` | SecureString | Postgres password |
+| `orders_ses_smtp_username` | String       | SES SMTP username |
+| `orders_ses_smtp_password` | SecureString | SES SMTP password |
 
 Secrets are fetched at deploy time by the `orders` pipeline — not stored in GitHub secrets.
 
@@ -235,3 +235,4 @@ Note: local apply requires Lambda zips to already exist in S3 for the current SH
 | [v1.0.0](https://github.com/leighwest/orders-infra/tree/v1.0.0) | t3.small + EIP, SSH access, AL2023, SQS + Lambda dispatch                                                                                            |
 | [v1.1.0](https://github.com/leighwest/orders-infra/tree/v1.1.0) | SSM Session Manager, scoped GitHub Actions IAM user, S3 deploy artefacts, port 22 removed                                                            |
 | [v1.2.0](https://github.com/leighwest/orders-infra/tree/v1.2.0) | Route 53 DNS migration, S3 Lambda artifact pattern, CloudFront + ACM, closed page overnight, t4g.small Graviton, EIP removed, scheduled start + stop |
+| v1.3.0                                                          | SSM parameter renamed from `orders_mysql_password` to `orders_postgres_password`, IAM policy updated                                                 |
