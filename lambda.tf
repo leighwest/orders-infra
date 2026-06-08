@@ -13,7 +13,8 @@ resource "aws_lambda_function" "ec2_stop" {
 
   environment {
     variables = {
-      REGION = var.AWS_REGION
+      REGION  = var.AWS_REGION
+      KVS_ARN = aws_cloudfront_key_value_store.ec2_state.arn
     }
   }
 }
@@ -35,6 +36,7 @@ resource "aws_lambda_function" "ec2_start" {
     variables = {
       REGION         = var.AWS_REGION
       HOSTED_ZONE_ID = aws_route53_zone.leighwest_dev.zone_id
+      KVS_ARN        = aws_cloudfront_key_value_store.ec2_state.arn
     }
   }
 }
@@ -64,4 +66,20 @@ resource "aws_lambda_event_source_mapping" "dispatch_sqs_trigger" {
   function_name    = aws_lambda_function.dispatch.arn
   batch_size       = 1
   enabled          = true
+}
+
+###
+# Lambda@Edge
+###
+
+resource "aws_lambda_function" "lambda_edge" {
+  provider         = aws.us_east_1
+  filename         = data.archive_file.lambda_edge.output_path
+  source_code_hash = data.archive_file.lambda_edge.output_base64sha256
+  function_name    = "orders-lambda-edge"
+  role             = aws_iam_role.lambda_edge.arn
+  handler          = "lambda_edge.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 5
+  publish          = true
 }
