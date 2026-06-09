@@ -8,7 +8,7 @@ resource "aws_lambda_function" "ec2_stop" {
   function_name = "ec2_stop"
   role          = aws_iam_role.ec2_stop_lambda.arn
   handler       = "ec2_stop.lambda_handler"
-  runtime       = "python3.9"
+  runtime       = "python3.12"
   timeout       = 60
 
   environment {
@@ -29,7 +29,7 @@ resource "aws_lambda_function" "ec2_start" {
   function_name = "ec2_start"
   role          = aws_iam_role.ec2_start_lambda.arn
   handler       = "ec2_start.lambda_handler"
-  runtime       = "python3.9"
+  runtime       = "python3.12"
   timeout       = 300
 
   environment {
