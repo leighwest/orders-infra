@@ -2,7 +2,27 @@
 
 ---
 
-## 2026-06-04
+## 2026-06-09
+
+CloudFront origin group failover replaced with a CloudFront Function and KeyValueStore state flag. The origin group approach required CloudFront to wait for the EC2 origin to time out before failing over to the S3 closed page — a 50-60 second hang on first request after each stop. The CloudFront Function reads an `ec2_state` flag from KVS in-process before CloudFront attempts the origin at all; when the flag is `down`, the closed page is returned immediately with zero hang.
+
+Stop Lambda updated to write `ec2_state=down` to KVS before stopping the instance. Start Lambda updated to write `ec2_state=up` after the health check passes. Both Lambdas bundle `botocore[crt]` for SigV4a signing of KVS API calls.
+
+`/closed.webp` served via a dedicated CloudFront behaviour pointing directly to S3, bypassing the function — prevents an infinite loop where the closed page HTML triggers another function invocation when the browser fetches the image.
+
+Path-based CloudFront behaviours and custom error responses removed — no longer needed now that the function handles routing. All HTTP methods supported on the default behaviour.
+
+`orders-infra` tagged `v1.3.0` at commit `a9cff9e` (Postgres SSM parameter update) and `v1.4.0` at commit `38b44e8` (cupcake images bucket public access). Tags mark the Postgres migration and Java 21 work respectively — blog posts pending.
+
+---
+
+## 2026-06-05 | v1.4.0
+
+Cupcake images S3 bucket made public — OAC removed, bucket policy updated to allow public reads. Required for enriched order email templates to render product images.
+
+---
+
+## 2026-06-04 | v1.3.0
 
 SSM Parameter Store parameter renamed from `orders_mysql_password` to `orders_postgres_password`. EC2 instance IAM policy updated to reference new parameter ARN.
 
