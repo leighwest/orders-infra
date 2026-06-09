@@ -65,6 +65,7 @@ export const handler = async (event) => {
     }
   } catch (err) {
     console.error('KVS read failed:', err);
+    throw err; // re-throw so CloudFront returns a 500 we can see
   }
 
   return request;
