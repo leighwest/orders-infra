@@ -186,6 +186,7 @@ resource "aws_iam_policy" "ec2_stop_lambda" {
         Action = [
           "cloudfront-keyvaluestore:GetKey",
           "cloudfront-keyvaluestore:PutKey",
+          "cloudfront-keyvaluestore:DescribeKeyValueStore",
         ]
         Resource = aws_cloudfront_key_value_store.ec2_state.arn
       },
@@ -255,6 +256,7 @@ resource "aws_iam_policy" "ec2_start_lambda" {
         Action = [
           "cloudfront-keyvaluestore:GetKey",
           "cloudfront-keyvaluestore:PutKey",
+          "cloudfront-keyvaluestore:DescribeKeyValueStore",
         ]
         Resource = aws_cloudfront_key_value_store.ec2_state.arn
       },
