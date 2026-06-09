@@ -38,35 +38,13 @@ const CLOSED_HTML = `<!doctype html>
 </html>`;
 
 export const handler = async (event) => {
-  const request = event.Records[0].cf.request;
-
-  if (request.uri === '/closed.webp') {
-    return request;
-  }
-
-  try {
-    const response = await client.send(
-      new GetKeyCommand({
-        KvsARN: KVS_ARN,
-        Key: 'ec2_state',
-      }),
-    );
-
-    if (response.Value === 'down') {
-      return {
-        status: '200',
-        statusDescription: 'OK',
-        headers: {
-          'content-type': [{ key: 'Content-Type', value: 'text/html' }],
-          'cache-control': [{ key: 'Cache-Control', value: 'no-store' }],
-        },
-        body: CLOSED_HTML,
-      };
-    }
-  } catch (err) {
-    console.error('KVS read failed:', err);
-    throw err; // re-throw so CloudFront returns a 500 we can see
-  }
-
-  return request;
+  return {
+    status: '200',
+    statusDescription: 'OK',
+    headers: {
+      'content-type': [{ key: 'Content-Type', value: 'text/html' }],
+      'cache-control': [{ key: 'Cache-Control', value: 'no-store' }],
+    },
+    body: '<html><body><h1>Lambda works</h1></body></html>',
+  };
 };
