@@ -68,18 +68,3 @@ resource "aws_lambda_event_source_mapping" "dispatch_sqs_trigger" {
   enabled          = true
 }
 
-###
-# Lambda@Edge
-###
-
-resource "aws_lambda_function" "lambda_edge" {
-  provider      = aws.us_east_1
-  s3_bucket     = aws_s3_bucket.lambda_artifacts_us_east_1.bucket
-  s3_key        = "lambda_edge/${var.GIT_SHA}.zip"
-  function_name = "orders-lambda-edge"
-  role          = aws_iam_role.lambda_edge.arn
-  handler       = "lambda_edge.handler"
-  runtime       = "nodejs20.x"
-  timeout       = 5
-  publish       = true
-}

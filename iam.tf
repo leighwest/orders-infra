@@ -488,25 +488,3 @@ resource "aws_iam_role_policy_attachment" "dispatch_lambda_policy_attach" {
   role       = aws_iam_role.dispatch_lambda_role.name
   policy_arn = aws_iam_policy.dispatch_lambda_policy.arn
 }
-
-###
-# Lambda@Edge
-###
-
-resource "aws_iam_role" "lambda_edge" {
-  provider           = aws.us_east_1
-  name               = "orders-lambda-edge-role"
-  assume_role_policy = data.aws_iam_policy_document.lambda_edge_assume_role.json
-}
-
-resource "aws_iam_policy" "lambda_edge" {
-  provider = aws.us_east_1
-  name     = "orders-lambda-edge-policy"
-  policy   = data.aws_iam_policy_document.lambda_edge.json
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_edge" {
-  provider   = aws.us_east_1
-  role       = aws_iam_role.lambda_edge.name
-  policy_arn = aws_iam_policy.lambda_edge.arn
-}

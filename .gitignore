@@ -3,7 +3,8 @@ terraform.tfvars
 terraform.tfstate*
 orders 
 orders.pub
-lambda_edge.zip
 scripts/node_modules/
 scripts/package.json
 scripts/package-lock.json
+scripts/test_lambda_edge.mjs
+scripts/test_viewer_request.js

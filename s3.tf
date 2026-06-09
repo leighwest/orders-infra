@@ -53,8 +53,3 @@ resource "aws_s3_bucket_policy" "closed_page" {
   policy = data.aws_iam_policy_document.closed_page_s3.json
 }
 
-resource "aws_s3_bucket" "lambda_artifacts_us_east_1" {
-  provider = aws.us_east_1
-  bucket   = "orders-lambda-artifacts-us-east-1"
-}
-

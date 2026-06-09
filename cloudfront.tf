@@ -31,7 +31,7 @@ resource "aws_cloudfront_distribution" "closed_page" {
     }
   }
 
-  # /closed.webp — served from S3 directly, bypasses Lambda@Edge
+  # /closed.webp — served from S3 directly, bypasses CloudFront Function
   ordered_cache_behavior {
     path_pattern           = "/closed.webp"
     target_origin_id       = "s3-closed-page"
@@ -51,7 +51,7 @@ resource "aws_cloudfront_distribution" "closed_page" {
     max_ttl     = 86400
   }
 
-  # Default behaviour — all requests go to EC2, Lambda@Edge checks KVS flag first
+  # Default behaviour — CloudFront Function checks KVS flag, routes to EC2 or returns closed page
   default_cache_behavior {
     target_origin_id       = "ec2-orders"
     viewer_protocol_policy = "redirect-to-https"
@@ -70,10 +70,9 @@ resource "aws_cloudfront_distribution" "closed_page" {
     default_ttl = 0
     max_ttl     = 0
 
-    lambda_function_association {
+    function_association {
       event_type   = "viewer-request"
-      lambda_arn   = aws_lambda_function.lambda_edge.qualified_arn
-      include_body = false
+      function_arn = aws_cloudfront_function.viewer_request.arn
     }
   }
 
