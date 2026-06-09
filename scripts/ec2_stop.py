@@ -11,13 +11,12 @@ def set_kvs_state(value):
     try:
         response = kvs.get_key(KvsARN=kvs_arn, Key='ec2_state')
         etag = response['ETag']
-    except kvs.exceptions.ResourceNotFoundException:
-        etag = None
+    except Exception:
+        # Key doesn't exist — get the KVS etag instead
+        kvs_info = kvs.describe_key_value_store(KvsARN=kvs_arn)
+        etag = kvs_info['ETag']
 
-    if etag:
-        kvs.put_key(KvsARN=kvs_arn, Key='ec2_state', Value=value, IfMatch=etag)
-    else:
-        kvs.put_key(KvsARN=kvs_arn, Key='ec2_state', Value=value)
+    kvs.put_key(KvsARN=kvs_arn, Key='ec2_state', Value=value, IfMatch=etag)
     print(f'KVS flag set to {value}')
 
 def lambda_handler(event, context):
