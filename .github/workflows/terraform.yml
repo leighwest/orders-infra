@@ -33,7 +33,7 @@ jobs:
 
           cd scripts
           npm init -y
-          npm install @aws-sdk/client-cloudfront-keyvaluestore
+          npm install @aws-sdk/client-cloudfront-keyvaluestore @aws-sdk/signature-v4-crt
           zip -r ../lambda_edge.zip lambda_edge.mjs node_modules/
           cd ..
 
