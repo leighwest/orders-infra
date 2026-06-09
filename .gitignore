@@ -4,3 +4,6 @@ terraform.tfstate*
 orders 
 orders.pub
 lambda_edge.zip
+scripts/node_modules/
+scripts/package.json
+scripts/package-lock.json

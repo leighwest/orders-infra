@@ -63,19 +63,3 @@ data "aws_iam_policy_document" "lambda_edge" {
     resources = ["arn:aws:logs:*:*:*"]
   }
 }
-
-###
-# Lambda@Edge — function artifact
-###
-
-data "archive_file" "lambda_edge" {
-  type        = "zip"
-  output_path = "${path.module}/lambda_edge.zip"
-
-  source {
-    content = templatefile("${path.module}/scripts/lambda_edge.mjs", {
-      kvs_arn = aws_cloudfront_key_value_store.ec2_state.arn
-    })
-    filename = "lambda_edge.mjs"
-  }
-}

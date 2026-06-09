@@ -3,8 +3,8 @@ import {
   GetKeyCommand,
 } from '@aws-sdk/client-cloudfront-keyvaluestore';
 
-const KVS_ARN = '${kvs_arn}';
-
+const KVS_ARN =
+  'arn:aws:cloudfront::519852452516:key-value-store/76a634ea-b9b1-4aa3-90d7-5fdcecee3c0a';
 const client = new CloudFrontKeyValueStoreClient({});
 
 const CLOSED_HTML = `<!doctype html>
@@ -38,13 +38,34 @@ const CLOSED_HTML = `<!doctype html>
 </html>`;
 
 export const handler = async (event) => {
-  return {
-    status: '200',
-    statusDescription: 'OK',
-    headers: {
-      'content-type': [{ key: 'Content-Type', value: 'text/html' }],
-      'cache-control': [{ key: 'Cache-Control', value: 'no-store' }],
-    },
-    body: '<html><body><h1>Lambda works</h1></body></html>',
-  };
+  const request = event.Records[0].cf.request;
+
+  if (request.uri === '/closed.webp') {
+    return request;
+  }
+
+  try {
+    const response = await client.send(
+      new GetKeyCommand({
+        KvsARN: KVS_ARN,
+        Key: 'ec2_state',
+      }),
+    );
+
+    if (response.Value === 'down') {
+      return {
+        status: '200',
+        statusDescription: 'OK',
+        headers: {
+          'content-type': [{ key: 'Content-Type', value: 'text/html' }],
+          'cache-control': [{ key: 'Cache-Control', value: 'no-store' }],
+        },
+        body: CLOSED_HTML,
+      };
+    }
+  } catch (err) {
+    console.error('KVS read failed:', err);
+  }
+
+  return request;
 };

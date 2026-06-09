@@ -73,13 +73,13 @@ resource "aws_lambda_event_source_mapping" "dispatch_sqs_trigger" {
 ###
 
 resource "aws_lambda_function" "lambda_edge" {
-  provider         = aws.us_east_1
-  filename         = data.archive_file.lambda_edge.output_path
-  source_code_hash = data.archive_file.lambda_edge.output_base64sha256
-  function_name    = "orders-lambda-edge"
-  role             = aws_iam_role.lambda_edge.arn
-  handler          = "lambda_edge.handler"
-  runtime          = "nodejs20.x"
-  timeout          = 5
-  publish          = true
+  provider      = aws.us_east_1
+  s3_bucket     = aws_s3_bucket.lambda_artifacts.bucket
+  s3_key        = "lambda_edge/${var.GIT_SHA}.zip"
+  function_name = "orders-lambda-edge"
+  role          = aws_iam_role.lambda_edge.arn
+  handler       = "lambda_edge.handler"
+  runtime       = "nodejs20.x"
+  timeout       = 5
+  publish       = true
 }
