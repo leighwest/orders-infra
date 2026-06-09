@@ -2,6 +2,7 @@ import {
   CloudFrontKeyValueStoreClient,
   GetKeyCommand,
 } from '@aws-sdk/client-cloudfront-keyvaluestore';
+import '@aws-sdk/signature-v4a';
 
 const KVS_ARN =
   'arn:aws:cloudfront::519852452516:key-value-store/76a634ea-b9b1-4aa3-90d7-5fdcecee3c0a';
