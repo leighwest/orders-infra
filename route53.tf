@@ -54,6 +54,16 @@ resource "aws_route53_record" "www" {
   records = ["distracted-knuth-2af9c0.netlify.app"]
 }
 
+# --- Issue Tracker (Cloudflare Tunnel) ---
+
+resource "aws_route53_record" "issue_tracker_api" {
+  zone_id = aws_route53_zone.leighwest_dev.zone_id
+  name    = "issue-tracker-api.leighwest.dev"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["66798006-04b6-4870-a7c4-5d1df2b90979.cfargotunnel.com"]
+}
+
 # --- SES DKIM CNAMEs ---
 
 resource "aws_route53_record" "ses_dkim_1" {
