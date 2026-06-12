@@ -8,12 +8,13 @@ resource "aws_lambda_function" "ec2_stop" {
   function_name = "ec2_stop"
   role          = aws_iam_role.ec2_stop_lambda.arn
   handler       = "ec2_stop.lambda_handler"
-  runtime       = "python3.9"
+  runtime       = "python3.12"
   timeout       = 60
 
   environment {
     variables = {
-      REGION = var.AWS_REGION
+      REGION  = var.AWS_REGION
+      KVS_ARN = aws_cloudfront_key_value_store.ec2_state.arn
     }
   }
 }
@@ -28,13 +29,14 @@ resource "aws_lambda_function" "ec2_start" {
   function_name = "ec2_start"
   role          = aws_iam_role.ec2_start_lambda.arn
   handler       = "ec2_start.lambda_handler"
-  runtime       = "python3.9"
+  runtime       = "python3.12"
   timeout       = 300
 
   environment {
     variables = {
       REGION         = var.AWS_REGION
       HOSTED_ZONE_ID = aws_route53_zone.leighwest_dev.zone_id
+      KVS_ARN        = aws_cloudfront_key_value_store.ec2_state.arn
     }
   }
 }
@@ -65,3 +67,4 @@ resource "aws_lambda_event_source_mapping" "dispatch_sqs_trigger" {
   batch_size       = 1
   enabled          = true
 }
+

@@ -1,8 +1,16 @@
+###
+# Account & network data
+###
+
 data "aws_caller_identity" "current" {}
 
 data "aws_vpc" "default" {
   default = true
 }
+
+###
+# S3 bucket policy — CloudFront OAC access to closed page bucket
+###
 
 data "aws_iam_policy_document" "closed_page_s3" {
   statement {

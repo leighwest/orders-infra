@@ -181,6 +181,16 @@ resource "aws_iam_policy" "ec2_stop_lambda" {
         Resource = "*"
       },
       {
+        Sid    = "KVSAccess"
+        Effect = "Allow"
+        Action = [
+          "cloudfront-keyvaluestore:GetKey",
+          "cloudfront-keyvaluestore:PutKey",
+          "cloudfront-keyvaluestore:DescribeKeyValueStore",
+        ]
+        Resource = aws_cloudfront_key_value_store.ec2_state.arn
+      },
+      {
         Sid    = "CloudWatchLogs"
         Effect = "Allow"
         Action = [
@@ -239,6 +249,16 @@ resource "aws_iam_policy" "ec2_start_lambda" {
           "route53:ChangeResourceRecordSets",
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "KVSAccess"
+        Effect = "Allow"
+        Action = [
+          "cloudfront-keyvaluestore:GetKey",
+          "cloudfront-keyvaluestore:PutKey",
+          "cloudfront-keyvaluestore:DescribeKeyValueStore",
+        ]
+        Resource = aws_cloudfront_key_value_store.ec2_state.arn
       },
       {
         Sid    = "CloudWatchLogs"
