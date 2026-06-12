@@ -61,7 +61,7 @@ resource "aws_route53_record" "issue_tracker_api" {
   name    = "issue-tracker-api.leighwest.dev"
   type    = "CNAME"
   ttl     = 300
-  records = ["66798006-04b6-4870-a7c4-5d1df2b90979.cfargotunnel.com"]
+  records = ["ddb7ddd4-977c-434e-b74d-b71ab30f01f5.cfargotunnel.com"]
 }
 
 # --- SES DKIM CNAMEs ---
