@@ -9,7 +9,7 @@ resource "aws_cloudfront_distribution" "closed_page" {
   enabled = true
   aliases = ["cupcakes-api.leighwest.dev"]
 
-  # S3 origin — closed page fallback
+  # S3 origin — closed page assets
   origin {
     domain_name              = aws_s3_bucket.closed_page.bucket_regional_domain_name
     origin_id                = "s3-closed-page"
@@ -31,137 +31,35 @@ resource "aws_cloudfront_distribution" "closed_page" {
     }
   }
 
-  # Origin group — EC2 primary, S3 fallback
-  origin_group {
-    origin_id = "orders-origin-group"
-
-    failover_criteria {
-      status_codes = [500, 502, 503, 504]
-    }
-
-    member {
-      origin_id = "ec2-orders"
-    }
-
-    member {
-      origin_id = "s3-closed-page"
-    }
-  }
-
-  # Default behaviour — read-only, uses origin group failover
-  default_cache_behavior {
-    target_origin_id       = "orders-origin-group"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-
-    forwarded_values {
-      query_string = true
-      headers      = ["Authorization", "Content-Type"]
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 0
-    max_ttl     = 0
-  }
-
-  # Swagger UI — EC2 origin directly
+  # /closed.webp — served from S3 directly, bypasses CloudFront Function
   ordered_cache_behavior {
-    path_pattern           = "/swagger-ui*"
-    target_origin_id       = "ec2-orders"
+    path_pattern           = "/closed.webp"
+    target_origin_id       = "s3-closed-page"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-
-    forwarded_values {
-      query_string = true
-      headers      = ["Authorization", "Content-Type"]
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 0
-    max_ttl     = 0
-  }
-
-  # OpenAPI spec — EC2 origin directly
-  ordered_cache_behavior {
-    path_pattern           = "/v3*"
-    target_origin_id       = "ec2-orders"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-
-    forwarded_values {
-      query_string = true
-      headers      = ["Authorization", "Content-Type"]
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 0
-    max_ttl     = 0
-  }
-
-  # Orders API — all methods, EC2 origin directly
-  ordered_cache_behavior {
-    path_pattern           = "/order*"
-    target_origin_id       = "ec2-orders"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-
-    forwarded_values {
-      query_string = true
-      headers      = ["Authorization", "Content-Type"]
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 0
-    max_ttl     = 0
-  }
-
-  # Cupcakes API — all methods, EC2 origin directly
-  ordered_cache_behavior {
-    path_pattern           = "/cupcakes*"
-    target_origin_id       = "ec2-orders"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-
-    forwarded_values {
-      query_string = true
-      headers      = ["Authorization", "Content-Type"]
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 0
-    max_ttl     = 0
-  }
-
-  # Actuator — health check endpoint
-  ordered_cache_behavior {
-    path_pattern           = "/actuator*"
-    target_origin_id       = "ec2-orders"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
 
     forwarded_values {
       query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 86400
+    max_ttl     = 86400
+  }
+
+  # Default behaviour — CloudFront Function checks KVS flag, routes to EC2 or returns closed page
+  default_cache_behavior {
+    target_origin_id       = "ec2-orders"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = true
       headers      = ["Authorization", "Content-Type"]
       cookies {
         forward = "none"
@@ -171,30 +69,11 @@ resource "aws_cloudfront_distribution" "closed_page" {
     min_ttl     = 0
     default_ttl = 0
     max_ttl     = 0
-  }
 
-  custom_error_response {
-    error_code         = 403
-    response_code      = 200
-    response_page_path = "/closed.html"
-  }
-
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/closed.html"
-  }
-
-  custom_error_response {
-    error_code         = 502
-    response_code      = 200
-    response_page_path = "/closed.html"
-  }
-
-  custom_error_response {
-    error_code         = 504
-    response_code      = 200
-    response_page_path = "/closed.html"
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.viewer_request.arn
+    }
   }
 
   restrictions {

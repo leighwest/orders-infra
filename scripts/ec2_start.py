@@ -5,9 +5,23 @@ import os
 
 region = os.environ['REGION']
 HOSTED_ZONE_ID = os.environ['HOSTED_ZONE_ID']
+kvs_arn = os.environ['KVS_ARN']
 
 ec2 = boto3.client('ec2', region_name=region)
 route53 = boto3.client('route53')
+kvs = boto3.client('cloudfront-keyvaluestore')
+
+def set_kvs_state(value):
+    try:
+        response = kvs.get_key(KvsARN=kvs_arn, Key='ec2_state')
+        etag = response['ETag']
+    except Exception:
+        # Key doesn't exist — get the KVS etag instead
+        kvs_info = kvs.describe_key_value_store(KvsARN=kvs_arn)
+        etag = kvs_info['ETag']
+
+    kvs.put_key(KvsARN=kvs_arn, Key='ec2_state', Value=value, IfMatch=etag)
+    print(f'KVS flag set to {value}')
 
 def lambda_handler(event, context):
     response = ec2.describe_instances(
@@ -62,6 +76,8 @@ def lambda_handler(event, context):
             with urllib.request.urlopen(health_url, timeout=5) as r:
                 if r.status == 200:
                     print('App is healthy')
+                    # Write flag after health check passes — EC2 is ready for traffic
+                    set_kvs_state('up')
                     break
         except Exception as e:
             print(f'Health check attempt {attempt + 1} failed: {e}')

@@ -3,3 +3,4 @@ terraform.tfvars
 terraform.tfstate*
 orders 
 orders.pub
+scripts/node_modules/
