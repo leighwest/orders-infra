@@ -2,6 +2,18 @@
 
 ---
 
+## 2026-06-14
+
+Migrated DNS authority for `leighwest.dev` from Route 53 to Cloudflare. Route 53 hosted zone deleted; all 12 records recreated in Cloudflare DNS, managed via Terraform in the new `dns-infra` repo. All records confirmed resolving post-cutover via `dig @1.1.1.1`.
+
+`ec2_start.py` Lambda DNS update ported from Route 53 `change_resource_record_sets` to Cloudflare API `PUT /zones/{zone_id}/dns_records/{record_id}`. Three new env vars added: `CF_API_TOKEN`, `CF_ZONE_ID`, `CF_RECORD_ID` — Terraform-managed, token stored as GitHub Actions secret. `ec2_stop.py` unchanged (no DNS calls).
+
+`route53.tf` deleted from `orders-infra`. `acm.tf` updated to remove the Route 53 DNS validation record resource. `aws_route53_zone` and all `aws_route53_record` resources removed from Terraform state.
+
+`issue-tracker-api.leighwest.dev` now publicly accessible via pre-existing Cloudflare Tunnel (`homelab-minipc`, UUID `ddb7ddd4-977c-434e-b74d-b71ab30f01f5`) running as a systemd service on the mini-PC. Swagger UI confirmed at `https://issue-tracker-api.leighwest.dev/swagger-ui/index.html`. Tunnel CNAME managed by `cloudflared`, excluded from Terraform.
+
+---
+
 ## 2026-06-09
 
 CloudFront origin group failover replaced with a CloudFront Function and KeyValueStore state flag. The origin group approach required CloudFront to wait for the EC2 origin to time out before failing over to the S3 closed page — a 50-60 second hang on first request after each stop. The CloudFront Function reads an `ec2_state` flag from KVS in-process before CloudFront attempts the origin at all; when the flag is `down`, the closed page is returned immediately with zero hang.

@@ -17,7 +17,7 @@ AWS Infrastructure:
 - EC2 (t4g.small, Graviton/ARM)
 - CloudFront + ACM: HTTPS termination, closed page served overnight
 - CloudFront Function + KVS: instant closed page routing via ec2_state flag
-- Route 53: hosted zone + DNS records for leighwest.dev
+- Cloudflare: DNS for leighwest.dev (managed via dns-infra repo)
 - SQS: order-created, order-dispatched
 - S3: cupcake images, deploy artefacts, lambda artifacts, closed page
 - ECR: orders Docker image repository
@@ -67,11 +67,12 @@ The pipeline is defined in `.github/workflows/terraform.yml`.
 
 ### Secrets required
 
-| Secret                  | Description                   |
-| ----------------------- | ----------------------------- |
-| `AWS_ACCESS_KEY_ID`     | IAM credentials for Terraform |
-| `AWS_SECRET_ACCESS_KEY` | IAM credentials               |
-| `PERSONAL_IP_ADDRESS`   | Your IP in CIDR notation      |
+| Secret                  | Description                                          |
+| ----------------------- | ---------------------------------------------------- |
+| `AWS_ACCESS_KEY_ID`     | IAM credentials for Terraform                        |
+| `AWS_SECRET_ACCESS_KEY` | IAM credentials                                      |
+| `PERSONAL_IP_ADDRESS`   | Your IP in CIDR notation                             |
+| `CF_API_TOKEN`          | Cloudflare API token for ec2_start Lambda DNS update |
 
 ---
 
@@ -98,7 +99,6 @@ No DynamoDB lock — single developer workflow.
 | `aws_cloudfront_key_value_store.ec2_state` | Stores ec2_state flag; read in-process by CloudFront Function      |
 | `aws_acm_certificate.cupcakes_api`         | ACM cert for cupcakes-api.leighwest.dev (us-east-1, auto-renews)   |
 | `aws_s3_bucket.closed_page`                | Static closed page served by CloudFront overnight                  |
-| `aws_route53_zone.leighwest_dev`           | Hosted zone for leighwest.dev                                      |
 | `aws_sqs_queue.order_created`              | Orders publishes, Lambda consumes                                  |
 | `aws_sqs_queue.order_dispatched`           | Lambda publishes, orders consumes                                  |
 | `aws_s3_bucket.orders`                     | Stores cupcake images                                              |
@@ -115,13 +115,13 @@ No DynamoDB lock — single developer workflow.
 
 Separate roles per service — least privilege throughout:
 
-| Principal                     | Type | Permissions                                                                                                      |
-| ----------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------- |
-| `orders-ec2-instance-role`    | Role | SQS read/write, S3, ECR pull, SSM Parameter Store read, SSM Session Manager                                      |
-| `orders-github-actions`       | User | ECR push, EC2 start/describe, SSM send-command, S3 deploy + lambda buckets, Route 53, ACM, CloudFront, Terraform |
-| `orders-dispatch-lambda-role` | Role | SQS consume order-created, SQS publish order-dispatched, CloudWatch logs                                         |
-| `ec2-start-lambda-role`       | Role | EC2 start/describe, Route 53 record updates, KVS read/write, CloudWatch logs                                     |
-| `ec2-stop-lambda-role`        | Role | EC2 stop/describe, KVS read/write, CloudWatch logs                                                               |
+| Principal                     | Type | Permissions                                                                                            |
+| ----------------------------- | ---- | ------------------------------------------------------------------------------------------------------ |
+| `orders-ec2-instance-role`    | Role | SQS read/write, S3, ECR pull, SSM Parameter Store read, SSM Session Manager                            |
+| `orders-github-actions`       | User | ECR push, EC2 start/describe, SSM send-command, S3 deploy + lambda buckets, ACM, CloudFront, Terraform |
+| `orders-dispatch-lambda-role` | Role | SQS consume order-created, SQS publish order-dispatched, CloudWatch logs                               |
+| `ec2-start-lambda-role`       | Role | EC2 start/describe, Cloudflare API DNS record update, KVS read/write, CloudWatch logs                  |
+| `ec2-stop-lambda-role`        | Role | EC2 stop/describe, KVS read/write, CloudWatch logs                                                     |
 
 No IAM users or access keys for the application — credentials come from the EC2 instance role.
 
@@ -143,28 +143,20 @@ Secrets are fetched at deploy time by the `orders` pipeline — not stored in Gi
 
 ## DNS
 
-Route 53 is the authoritative DNS for `leighwest.dev` (domain registration remains at Namecheap).
-
-**Nameservers (configured in Namecheap as custom DNS):**
-
-```
-ns-919.awsdns-50.net
-ns-160.awsdns-20.com
-ns-1500.awsdns-59.org
-ns-2026.awsdns-61.co.uk
-```
+Cloudflare is the authoritative DNS for `leighwest.dev` (domain registration remains at Namecheap). All records are managed via Terraform in the [`dns-infra`](https://github.com/leighwest/dns-infra) repo, except `issue-tracker-api.leighwest.dev` which is managed by `cloudflared` as a native Tunnel record.
 
 **Key records:**
 
-| Record    | Host                  | TTL  | Notes                                                                                |
-| --------- | --------------------- | ---- | ------------------------------------------------------------------------------------ |
-| A (alias) | `cupcakes-api`        | —    | Permanent CloudFront alias — never changes                                           |
-| A         | `origin.cupcakes-api` | 60s  | Current EC2 public IP — updated by start Lambda on each boot; not in Terraform state |
-| A         | `instance-starter`    | 300s |                                                                                      |
-| A         | `leighwest.dev`       | 300s | Netlify load balancer IPs                                                            |
-| CNAME     | `www`                 | 300s | Netlify                                                                              |
-| CNAME     | `*._domainkey`        | 300s | SES DKIM (3 records)                                                                 |
-| TXT       | `_dmarc`              | 300s | DMARC policy                                                                         |
+| Record    | Host                  | TTL  | Notes                                                                                                   |
+| --------- | --------------------- | ---- | ------------------------------------------------------------------------------------------------------- |
+| A (alias) | `cupcakes-api`        | —    | Permanent CloudFront alias — never changes                                                              |
+| A         | `origin.cupcakes-api` | 60s  | Current EC2 public IP — updated by start Lambda via Cloudflare API on each boot; DNS-only (not proxied) |
+| A         | `instance-starter`    | 300s |                                                                                                         |
+| A         | `leighwest.dev`       | 300s | Netlify load balancer IPs                                                                               |
+| CNAME     | `www`                 | 300s | Netlify                                                                                                 |
+| CNAME     | `issue-tracker-api`   | —    | Cloudflare Tunnel (`homelab-minipc`) — managed by `cloudflared`, not Terraform                          |
+| CNAME     | `*._domainkey`        | 300s | SES DKIM (3 records)                                                                                    |
+| TXT       | `_dmarc`              | 300s | DMARC policy                                                                                            |
 
 ---
 
@@ -207,22 +199,22 @@ Note: local apply requires Lambda zips to already exist in S3 for the current SH
 
 ## Key Design Decisions
 
-| Decision                                           | Rationale                                                                                                                                                                                |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S3 backend (no DynamoDB lock)                      | Remote state without overhead — single developer                                                                                                                                         |
-| EC2 instance role                                  | No credentials in config or Parameter Store for app auth                                                                                                                                 |
-| Separate IAM roles per Lambda                      | Different trust boundaries and permission sets                                                                                                                                           |
-| Direct Terraform resource refs                     | Avoids hardcoded ARNs, creates implicit dependency ordering                                                                                                                              |
-| CloudFront always in live path                     | ACM certs cannot attach directly to EC2 — CloudFront required for HTTPS. CloudFront Function handles closed page routing via KVS state flag                                              |
-| CloudFront Function over Lambda@Edge for KVS reads | KVS was designed for CloudFront Functions — reads are in-process with no network call. Lambda@Edge requires an HTTPS network call to the KVS API which times out in the edge environment |
-| origin.cupcakes-api.leighwest.dev not in Terraform | Lambda owns this record at runtime — Terraform managing it resets to placeholder `1.1.1.1` on every push, breaking routing. Created once via CLI                                         |
-| Scheduled EC2 start + stop                         | Cost saving — instance runs 7am–8pm AEST only. CloudFront serves a closed page from S3 overnight; no connection timeout for visitors                                                     |
-| SSM Session Manager over SSH                       | No open ports, IAM-controlled access, full audit trail in CloudWatch                                                                                                                     |
-| S3 staging for deploy artefacts                    | No SCP/SSH needed — runner uploads files, EC2 pulls them via instance role                                                                                                               |
-| Scoped GitHub Actions IAM user                     | Replaces broad AdministratorAccess with a named, version-controlled policy                                                                                                               |
-| `aws_caller_identity` data source                  | Replaces hardcoded account ID in ARNs — works across accounts without code changes                                                                                                       |
-| Route 53 over Namecheap DNS                        | Programmable API — enables Lambda-driven DNS updates on EC2 start without IP whitelisting constraints                                                                                    |
-| S3 immutable artifact pattern for Lambda           | Terraform's `archive_file` produces non-deterministic zips across environments. Pipeline builds once, uploads by SHA, Terraform deploys from S3 — clean separation of build and deploy   |
+| Decision                                           | Rationale                                                                                                                                                                                                              |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S3 backend (no DynamoDB lock)                      | Remote state without overhead — single developer                                                                                                                                                                       |
+| EC2 instance role                                  | No credentials in config or Parameter Store for app auth                                                                                                                                                               |
+| Separate IAM roles per Lambda                      | Different trust boundaries and permission sets                                                                                                                                                                         |
+| Direct Terraform resource refs                     | Avoids hardcoded ARNs, creates implicit dependency ordering                                                                                                                                                            |
+| CloudFront always in live path                     | ACM certs cannot attach directly to EC2 — CloudFront required for HTTPS. CloudFront Function handles closed page routing via KVS state flag                                                                            |
+| CloudFront Function over Lambda@Edge for KVS reads | KVS was designed for CloudFront Functions — reads are in-process with no network call. Lambda@Edge requires an HTTPS network call to the KVS API which times out in the edge environment                               |
+| origin.cupcakes-api.leighwest.dev not in Terraform | Lambda owns this record at runtime — Terraform managing it resets to placeholder `1.1.1.1` on every push, breaking routing. Created once via CLI                                                                       |
+| Scheduled EC2 start + stop                         | Cost saving — instance runs 7am–8pm AEST only. CloudFront serves a closed page from S3 overnight; no connection timeout for visitors                                                                                   |
+| SSM Session Manager over SSH                       | No open ports, IAM-controlled access, full audit trail in CloudWatch                                                                                                                                                   |
+| S3 staging for deploy artefacts                    | No SCP/SSH needed — runner uploads files, EC2 pulls them via instance role                                                                                                                                             |
+| Scoped GitHub Actions IAM user                     | Replaces broad AdministratorAccess with a named, version-controlled policy                                                                                                                                             |
+| `aws_caller_identity` data source                  | Replaces hardcoded account ID in ARNs — works across accounts without code changes                                                                                                                                     |
+| Cloudflare over Route 53 for DNS                   | Cloudflare Tunnel support, unified DNS + tunnel management, zero cost for the hosted zone. Route 53 was the original choice for programmable DNS; migrated once Cloudflare Tunnel became a requirement for the homelab |
+| S3 immutable artifact pattern for Lambda           | Terraform's `archive_file` produces non-deterministic zips across environments. Pipeline builds once, uploads by SHA, Terraform deploys from S3 — clean separation of build and deploy                                 |
 
 ---
 
