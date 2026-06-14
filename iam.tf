@@ -243,14 +243,6 @@ resource "aws_iam_policy" "ec2_start_lambda" {
         Resource = "*"
       },
       {
-        Sid    = "Route53Update"
-        Effect = "Allow"
-        Action = [
-          "route53:ChangeResourceRecordSets",
-        ]
-        Resource = "*"
-      },
-      {
         Sid    = "KVSAccess"
         Effect = "Allow"
         Action = [

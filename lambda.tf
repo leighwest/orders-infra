@@ -34,9 +34,11 @@ resource "aws_lambda_function" "ec2_start" {
 
   environment {
     variables = {
-      REGION         = var.AWS_REGION
-      HOSTED_ZONE_ID = aws_route53_zone.leighwest_dev.zone_id
-      KVS_ARN        = aws_cloudfront_key_value_store.ec2_state.arn
+      REGION       = var.AWS_REGION
+      KVS_ARN      = aws_cloudfront_key_value_store.ec2_state.arn
+      CF_ZONE_ID   = var.CF_ZONE_ID
+      CF_RECORD_ID = var.CF_RECORD_ID
+      CF_API_TOKEN = var.CF_API_TOKEN
     }
   }
 }

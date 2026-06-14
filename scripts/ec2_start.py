@@ -1,14 +1,17 @@
 import boto3
 import urllib.request
+import urllib.error
 import time
 import os
+import json
 
 region = os.environ['REGION']
-HOSTED_ZONE_ID = os.environ['HOSTED_ZONE_ID']
 kvs_arn = os.environ['KVS_ARN']
+CF_API_TOKEN = os.environ['CF_API_TOKEN']
+CF_ZONE_ID = os.environ['CF_ZONE_ID']
+CF_RECORD_ID = os.environ['CF_RECORD_ID'] 
 
 ec2 = boto3.client('ec2', region_name=region)
-route53 = boto3.client('route53')
 kvs = boto3.client('cloudfront-keyvaluestore')
 
 def set_kvs_state(value):
@@ -16,12 +19,37 @@ def set_kvs_state(value):
         response = kvs.get_key(KvsARN=kvs_arn, Key='ec2_state')
         etag = response['ETag']
     except Exception:
-        # Key doesn't exist — get the KVS etag instead
         kvs_info = kvs.describe_key_value_store(KvsARN=kvs_arn)
         etag = kvs_info['ETag']
 
     kvs.put_key(KvsARN=kvs_arn, Key='ec2_state', Value=value, IfMatch=etag)
     print(f'KVS flag set to {value}')
+
+def update_cloudflare_dns(ip):
+    url = f'https://api.cloudflare.com/client/v4/zones/{CF_ZONE_ID}/dns_records/{CF_RECORD_ID}'
+    payload = json.dumps({
+        'type': 'A',
+        'name': 'origin.cupcakes-api.leighwest.dev',
+        'content': ip,
+        'ttl': 60,
+        'proxied': False
+    }).encode('utf-8')
+
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        method='PUT',
+        headers={
+            'Authorization': f'Bearer {CF_API_TOKEN}',
+            'Content-Type': 'application/json'
+        }
+    )
+
+    with urllib.request.urlopen(req) as r:
+        body = json.loads(r.read())
+        if not body.get('success'):
+            raise Exception(f'Cloudflare DNS update failed: {body.get("errors")}')
+        print(f'origin DNS updated to {ip} via Cloudflare')
 
 def lambda_handler(event, context):
     response = ec2.describe_instances(
@@ -49,34 +77,18 @@ def lambda_handler(event, context):
     else:
         print('Instance already running, skipping start')
 
-    # Always update DNS regardless of instance state
     response = ec2.describe_instances(InstanceIds=[instance_id])
     public_ip = response['Reservations'][0]['Instances'][0]['PublicIpAddress']
     print('Public IP: ' + public_ip)
 
-    route53.change_resource_record_sets(
-        HostedZoneId=HOSTED_ZONE_ID,
-        ChangeBatch={
-            'Changes': [{
-                'Action': 'UPSERT',
-                'ResourceRecordSet': {
-                    'Name': 'origin.cupcakes-api.leighwest.dev',
-                    'Type': 'A',
-                    'TTL': 60,
-                    'ResourceRecords': [{'Value': public_ip}]
-                }
-            }]
-        }
-    )
-    print('origin DNS updated to ' + public_ip)
+    update_cloudflare_dns(public_ip)
 
     health_url = 'http://' + public_ip + ':80/actuator/health'
-    for attempt in range(24):  # 2 min max (24 * 5s)
+    for attempt in range(24):
         try:
             with urllib.request.urlopen(health_url, timeout=5) as r:
                 if r.status == 200:
                     print('App is healthy')
-                    # Write flag after health check passes — EC2 is ready for traffic
                     set_kvs_state('up')
                     break
         except Exception as e:
