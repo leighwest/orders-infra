@@ -31,6 +31,35 @@ resource "aws_ssm_parameter" "smtp_password" {
 # GitHub Actions
 ###
 
+resource "aws_iam_openid_connect_provider" "oidc_provider" {
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
+}
+
+resource "aws_iam_role" "oidc_role" {
+  name = "oidc-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.oidc_provider.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            # Strictly restrict which external entities can assume this role
+            "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:aud" = "sts.amazonaws.com"
+            "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:sub" = "repo:leighwest/orders-infra:ref:refs/heads/main"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_iam_user" "github_actions" {
   name = "orders-github-actions"
 }
@@ -128,6 +157,11 @@ resource "aws_iam_policy" "github_actions_policy" {
 
 resource "aws_iam_user_policy_attachment" "github_actions_policy_attach" {
   user       = aws_iam_user.github_actions.name
+  policy_arn = aws_iam_policy.github_actions_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "oidc_role_policy_attach" {
+  role       = aws_iam_role.oidc_role.name
   policy_arn = aws_iam_policy.github_actions_policy.arn
 }
 
