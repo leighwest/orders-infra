@@ -35,6 +35,93 @@ resource "aws_iam_role" "oidc_role" {
   })
 }
 
+resource "aws_iam_role" "orders_deploy" {
+  name = "orders-deploy"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.oidc_provider.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            # Strictly restrict which external entities can assume this role
+            "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:aud" = "sts.amazonaws.com"
+            "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:sub" = "repo:leighwest/orders:ref:refs/heads/main"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "orders_deploy" {
+  name = "orders-deploy"
+  role = aws_iam_role.orders_deploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ECRAuth"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
+        Sid    = "ECRAccess"
+        Effect = "Allow"
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+        ]
+        Resource = aws_ecr_repository.orders.arn
+      },
+      {
+        Sid    = "EC2Access"
+        Effect = "Allow"
+        Action = [
+          "ec2:StartInstances",
+          "ec2:DescribeInstances",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SSMSendCommand"
+        Effect = "Allow"
+        Action = [
+          "ssm:SendCommand",
+          "ssm:GetCommandInvocation",
+          "ssm:DescribeInstanceInformation",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "S3DeployAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket",
+        ]
+        Resource = [
+          aws_s3_bucket.deploy.arn,
+          "${aws_s3_bucket.deploy.arn}/*",
+        ]
+      },
+    ]
+  })
+}
+
 resource "aws_iam_user" "github_actions" {
   name = "orders-github-actions"
 }
