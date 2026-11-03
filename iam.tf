@@ -35,6 +35,30 @@ resource "aws_iam_role" "oidc_role" {
   })
 }
 
+resource "aws_iam_role" "orders_infra_terraform" {
+  name = "orders-infra-terraform"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.oidc_provider.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            # Strictly restrict which external entities can assume this role
+            "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:aud" = "sts.amazonaws.com"
+            "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:sub" = "repo:leighwest/orders-infra:ref:refs/heads/main"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "orders_deploy" {
   name = "orders-deploy"
 
@@ -211,6 +235,11 @@ resource "aws_iam_policy" "github_actions_policy" {
 
 resource "aws_iam_role_policy_attachment" "oidc_role_policy_attach" {
   role       = aws_iam_role.oidc_role.name
+  policy_arn = aws_iam_policy.github_actions_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "orders_infra_terraform_policy_attach" {
+  role       = aws_iam_role.orders_infra_terraform.name
   policy_arn = aws_iam_policy.github_actions_policy.arn
 }
 
