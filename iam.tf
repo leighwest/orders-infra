@@ -122,14 +122,6 @@ resource "aws_iam_role_policy" "orders_deploy" {
   })
 }
 
-resource "aws_iam_user" "github_actions" {
-  name = "orders-github-actions"
-}
-
-resource "aws_iam_access_key" "github_actions" {
-  user = aws_iam_user.github_actions.name
-}
-
 resource "aws_iam_policy" "github_actions_policy" {
   name = "orders-github-actions-policy"
 
@@ -217,27 +209,11 @@ resource "aws_iam_policy" "github_actions_policy" {
   })
 }
 
-resource "aws_iam_user_policy_attachment" "github_actions_policy_attach" {
-  user       = aws_iam_user.github_actions.name
-  policy_arn = aws_iam_policy.github_actions_policy.arn
-}
-
 resource "aws_iam_role_policy_attachment" "oidc_role_policy_attach" {
   role       = aws_iam_role.oidc_role.name
   policy_arn = aws_iam_policy.github_actions_policy.arn
 }
 
-resource "aws_ssm_parameter" "github_actions_access_key_id" {
-  name  = "orders_github_actions_access_key_id"
-  type  = "String"
-  value = aws_iam_access_key.github_actions.id
-}
-
-resource "aws_ssm_parameter" "github_actions_secret_access_key" {
-  name  = "orders_github_actions_secret_access_key"
-  type  = "SecureString"
-  value = aws_iam_access_key.github_actions.secret
-}
 
 ###
 # Lambda Scheduled Stop
