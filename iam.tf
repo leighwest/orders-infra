@@ -333,6 +333,12 @@ resource "aws_iam_policy" "ec2_start_lambda" {
         ]
         Resource = "arn:aws:logs:*:*:*"
       },
+      {
+        Sid      = "SSMReadCfToken"
+        Effect   = "Allow"
+        Action   = "ssm:GetParameter"
+        Resource = "arn:aws:ssm:${var.AWS_REGION}:${data.aws_caller_identity.current.account_id}:parameter/orders_cf_api_token"
+      },
     ]
   })
 }

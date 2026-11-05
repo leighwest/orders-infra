@@ -23,7 +23,7 @@ AWS Infrastructure:
 - ECR: orders Docker image repository
 - Lambda: dispatch service (Node.js), EC2 start (Python), EC2 stop (Python)
 - SES: transactional email
-- IAM: instance role, Lambda roles, GitHub Actions user (least privilege)
+- IAM: instance role, Lambda roles, GitHub OIDC roles per pipeline (least privilege)
 - EventBridge Scheduler: start (6:50am AEST) + stop (8:00pm AEST)
 - SSM Session Manager: bastion-free EC2 access
 ```
@@ -67,12 +67,7 @@ The pipeline is defined in `.github/workflows/terraform.yml`.
 
 ### Secrets required
 
-| Secret                  | Description                                          |
-| ----------------------- | ---------------------------------------------------- |
-| `AWS_ACCESS_KEY_ID`     | IAM credentials for Terraform                        |
-| `AWS_SECRET_ACCESS_KEY` | IAM credentials                                      |
-| `PERSONAL_IP_ADDRESS`   | Your IP in CIDR notation                             |
-| `CF_API_TOKEN`          | Cloudflare API token for ec2_start Lambda DNS update |
+None. The pipeline authenticates to AWS via GitHub OIDC (role `orders-infra-terraform`), and the Cloudflare token the `ec2_start` Lambda needs is read from SSM at runtime (see [Secrets Management](#secrets-management)). No secrets are passed to Terraform, so none appear in plans or state.
 
 ---
 
@@ -85,7 +80,7 @@ Terraform state is stored remotely in S3:
 - **Region:** `ap-southeast-4`
 - **Versioning:** enabled
 
-No DynamoDB lock — single developer workflow.
+- **Locking:** native S3 lockfile (`use_lockfile = true`), no DynamoDB table
 
 ---
 
@@ -118,12 +113,13 @@ Separate roles per service — least privilege throughout:
 | Principal                     | Type | Permissions                                                                                            |
 | ----------------------------- | ---- | ------------------------------------------------------------------------------------------------------ |
 | `orders-ec2-instance-role`    | Role | SQS read/write, S3, ECR pull, SSM Parameter Store read, SSM Session Manager                            |
-| `orders-github-actions`       | User | ECR push, EC2 start/describe, SSM send-command, S3 deploy + lambda buckets, ACM, CloudFront, Terraform |
+| `orders-infra-terraform`      | Role | GitHub OIDC, `orders-infra` `main` only. Terraform-managed services, plus deploy permissions           |
+| `orders-deploy`               | Role | GitHub OIDC, `orders` `main` only. ECR push, EC2 describe, SSM send-command, S3 deploy bucket          |
 | `orders-dispatch-lambda-role` | Role | SQS consume order-created, SQS publish order-dispatched, CloudWatch logs                               |
-| `ec2-start-lambda-role`       | Role | EC2 start/describe, Cloudflare API DNS record update, KVS read/write, CloudWatch logs                  |
+| `ec2-start-lambda-role`       | Role | EC2 start/describe, SSM read `orders_cf_api_token`, KVS read/write, CloudWatch logs                    |
 | `ec2-stop-lambda-role`        | Role | EC2 stop/describe, KVS read/write, CloudWatch logs                                                     |
 
-No IAM users or access keys for the application — credentials come from the EC2 instance role.
+No IAM users or access keys for the application or CI — credentials come from the EC2 instance role, Lambda roles and GitHub OIDC.
 
 ---
 
@@ -136,8 +132,11 @@ Application secrets are stored in AWS Systems Manager Parameter Store:
 | `orders_postgres_password` | SecureString | Postgres password |
 | `orders_ses_smtp_username` | String       | SES SMTP username |
 | `orders_ses_smtp_password` | SecureString | SES SMTP password |
+| `orders_cf_api_token`      | SecureString | Cloudflare API token (Zone:DNS:Edit, `leighwest.dev`) for the `ec2_start` Lambda |
 
-Secrets are fetched at deploy time by the `orders` pipeline — not stored in GitHub secrets.
+App secrets are fetched at deploy time by the `orders` pipeline — not stored in GitHub secrets. The `ec2_start` Lambda reads `orders_cf_api_token` itself at cold start.
+
+Parameters are created by hand (`aws ssm put-parameter`), not by Terraform. Terraform only references them by ARN in IAM policies, so their values never enter state or plans.
 
 ---
 

@@ -48,7 +48,7 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Terraform plan
-        run: terraform plan -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}" -var="GIT_SHA=${{ github.sha }}" -var="CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}"
+        run: terraform plan -var="GIT_SHA=${{ github.sha }}" 
 
       - name: Terraform apply
-        run: terraform apply -auto-approve -var="PERSONAL_IP_ADDRESS=${{ secrets.PERSONAL_IP_ADDRESS }}" -var="GIT_SHA=${{ github.sha }}" -var="CF_API_TOKEN=${{ secrets.CF_API_TOKEN }}"
+        run: terraform apply -auto-approve -var="GIT_SHA=${{ github.sha }}" 

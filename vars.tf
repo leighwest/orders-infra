@@ -1,7 +1,6 @@
 variable "AWS_REGION" {
   default = "ap-southeast-4"
 }
-variable "PERSONAL_IP_ADDRESS" {}
 
 variable "PATH_TO_EC2_STOP_SCRIPT" {
   default = "scripts/ec2_stop.py"
@@ -16,12 +15,6 @@ variable "ECR_REPO_NAME" {
 variable "GIT_SHA" {
   description = "Git commit SHA for Lambda artifact versioning"
   type        = string
-}
-
-variable "CF_API_TOKEN" {
-  description = "Cloudflare API token with Zone:DNS:Edit scope for leighwest.dev"
-  type        = string
-  sensitive   = true
 }
 
 variable "CF_ZONE_ID" {

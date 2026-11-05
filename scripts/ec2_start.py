@@ -7,9 +7,13 @@ import json
 
 region = os.environ['REGION']
 kvs_arn = os.environ['KVS_ARN']
-CF_API_TOKEN = os.environ['CF_API_TOKEN']
 CF_ZONE_ID = os.environ['CF_ZONE_ID']
 CF_RECORD_ID = os.environ['CF_RECORD_ID'] 
+
+ssm = boto3.client('ssm', region_name=region)
+CF_API_TOKEN = ssm.get_parameter(
+    Name=os.environ['CF_API_TOKEN_PARAM'], WithDecryption=True
+)['Parameter']['Value']
 
 ec2 = boto3.client('ec2', region_name=region)
 kvs = boto3.client('cloudfront-keyvaluestore')
