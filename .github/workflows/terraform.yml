@@ -5,17 +5,26 @@ on:
     branches:
       - main
 
-jobs:
-  terraform:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+concurrency:
+  group: terraform
+  cancel-in-progress: false
 
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_VERSION: 1.15.8
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
       - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
@@ -48,7 +57,37 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Terraform plan
-        run: terraform plan -var="GIT_SHA=${{ github.sha }}" 
+        run: terraform plan -input=false -out=tfplan -var="GIT_SHA=${{ github.sha }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan
+          retention-days: 1
+
+  apply:
+    runs-on: ubuntu-latest
+    needs: plan
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: arn:aws:iam::519852452516:role/orders-infra-terraform
+          aws-region: ap-southeast-4
+
+      - name: Terraform init
+        run: terraform init
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
 
       - name: Terraform apply
-        run: terraform apply -auto-approve -var="GIT_SHA=${{ github.sha }}" 
+        run: terraform apply -input=false tfplan
