@@ -27,8 +27,10 @@ resource "aws_iam_role" "orders_infra_terraform" {
           StringEquals = {
             # Strictly restrict which external entities can assume this role
             "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:aud" = "sts.amazonaws.com"
-            "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:sub" = "repo:leighwest/orders-infra:ref:refs/heads/main"
-          }
+            "${replace(aws_iam_openid_connect_provider.oidc_provider.url, "https://", "")}:sub" = [
+              "repo:leighwest/orders-infra:ref:refs/heads/main",
+              "repo:leighwest/orders-infra:environment:production",
+          ] }
         }
       }
     ]
