@@ -477,9 +477,12 @@ resource "aws_iam_policy" "ec2_instance_policy" {
         ]
       },
       {
-        Sid      = "SESSend"
-        Effect   = "Allow"
-        Action   = ["ses:SendEmail"]
+        Sid    = "SESSend"
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail",
+        ]
         Resource = "arn:aws:ses:ap-southeast-2:${data.aws_caller_identity.current.account_id}:identity/cupcake-orders@leighwest.dev"
       },
     ]
