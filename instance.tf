@@ -15,4 +15,9 @@ resource "aws_instance" "orders" {
   lifecycle {
     ignore_changes = [associate_public_ip_address]
   }
+
+  metadata_options {
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
 }

@@ -476,6 +476,12 @@ resource "aws_iam_policy" "ec2_instance_policy" {
           "arn:aws:ssm:${var.AWS_REGION}:${data.aws_caller_identity.current.account_id}:parameter/orders_ses_smtp_password",
         ]
       },
+      {
+        Sid      = "SESSend"
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail"]
+        Resource = "arn:aws:ses:ap-southeast-2:${data.aws_caller_identity.current.account_id}:identity/cupcake-orders@leighwest.dev"
+      },
     ]
   })
 }
