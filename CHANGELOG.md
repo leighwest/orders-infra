@@ -2,6 +2,16 @@
 
 ---
 
+## 2026-11-21
+
+Email moved off SES SMTP onto the SES API with the EC2 instance role, retiring the last long-lived credential in the stack. `SESSend` statement added to `orders-ec2-instance-policy`: `ses:SendEmail` and `ses:SendRawEmail` on the `cupcake-orders@leighwest.dev` identity in `ap-southeast-2` (SES is in Sydney, so the ARN doesn't use `var.AWS_REGION`). `metadata_options` codified on the instance (IMDSv2 required, hop limit 2), matching what the AMI already set, so the `orders` container can reach the role across the Docker bridge.
+
+The first send from the instance failed with `AccessDenied` on `configuration-set/my-first-configuration-set`: the SES console had made it the sender's default, and SES authorises against the configuration set too. It had no event destinations, so it was detached from the identity by hand rather than granted.
+
+Once the app had switched, the `orders_ses_smtp_*` ARNs were removed from `SSMAccess`, and the parameters and the hand-made `orders-ses-smtp-user` (inline `ses:SendRawEmail` on `*`, key created 2024-04-05) were deleted with the CLI.
+
+---
+
 ## 2026-06-14
 
 Migrated DNS authority for `leighwest.dev` from Route 53 to Cloudflare. Route 53 hosted zone deleted; all 12 records recreated in Cloudflare DNS, managed via Terraform in the new `dns-infra` repo. All records confirmed resolving post-cutover via `dig @1.1.1.1`.
