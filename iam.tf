@@ -472,8 +472,6 @@ resource "aws_iam_policy" "ec2_instance_policy" {
         ]
         Resource = [
           "arn:aws:ssm:${var.AWS_REGION}:${data.aws_caller_identity.current.account_id}:parameter/orders_postgres_password",
-          "arn:aws:ssm:${var.AWS_REGION}:${data.aws_caller_identity.current.account_id}:parameter/orders_ses_smtp_username",
-          "arn:aws:ssm:${var.AWS_REGION}:${data.aws_caller_identity.current.account_id}:parameter/orders_ses_smtp_password",
         ]
       },
       {
